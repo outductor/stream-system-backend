@@ -1,0 +1,252 @@
+openapi: 3.0.0
+info:
+  title: DJ Event Streaming System API
+  version: 1.0.0
+  description: API for DJ event streaming and timetable management
+
+servers:
+  - url: http://localhost:8080/api/v1
+
+paths:
+  /stream/status:
+    get:
+      summary: Get current stream status
+      operationId: getStreamStatus
+      tags:
+        - stream
+      responses:
+        '200':
+          description: Current stream information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StreamStatus'
+
+  /reservations:
+    get:
+      summary: Get reservations for today and tomorrow
+      operationId: getReservations
+      tags:
+        - reservations
+      parameters:
+        - name: date
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Filter by date (optional, defaults to today and tomorrow)
+      responses:
+        '200':
+          description: List of reservations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Reservation'
+    
+    post:
+      summary: Create a new reservation
+      operationId: createReservation
+      tags:
+        - reservations
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateReservationRequest'
+      responses:
+        '201':
+          description: Reservation created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reservation'
+        '400':
+          description: Invalid request (time conflict, past time, etc.)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /reservations/{reservationId}:
+    delete:
+      summary: Delete a reservation
+      operationId: deleteReservation
+      tags:
+        - reservations
+      parameters:
+        - name: reservationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - passcode
+              properties:
+                passcode:
+                  type: string
+                  pattern: '^[0-9]{4}$'
+                  description: 4-digit passcode
+      responses:
+        '204':
+          description: Reservation deleted
+        '401':
+          description: Invalid passcode
+        '404':
+          description: Reservation not found
+
+  /available-slots:
+    get:
+      summary: Get available time slots
+      operationId: getAvailableSlots
+      tags:
+        - reservations
+      parameters:
+        - name: date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Available time slots
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TimeSlot'
+
+components:
+  schemas:
+    StreamStatus:
+      type: object
+      required:
+        - isLive
+        - rtmpUrl
+        - hlsUrl
+      properties:
+        isLive:
+          type: boolean
+          description: Whether stream is currently live
+        currentDj:
+          type: string
+          description: Name of current DJ (null if no one is scheduled)
+        nextDj:
+          type: string
+          description: Name of next DJ
+        currentStartTime:
+          type: string
+          format: date-time
+          description: Start time of current session
+        currentEndTime:
+          type: string
+          format: date-time
+          description: End time of current session
+        nextStartTime:
+          type: string
+          format: date-time
+          description: Start time of next session
+        rtmpUrl:
+          type: string
+          format: uri
+          description: RTMP ingest URL for DJ
+        hlsUrl:
+          type: string
+          format: uri
+          description: HLS playback URL for viewers
+
+    Reservation:
+      type: object
+      required:
+        - id
+        - djName
+        - startTime
+        - endTime
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        djName:
+          type: string
+          maxLength: 100
+          description: DJ display name (emojis allowed)
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+
+    CreateReservationRequest:
+      type: object
+      required:
+        - djName
+        - startTime
+        - endTime
+        - passcode
+      properties:
+        djName:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: DJ display name (emojis allowed)
+        startTime:
+          type: string
+          format: date-time
+          description: Must be on 15-minute intervals
+        endTime:
+          type: string
+          format: date-time
+          description: Must be on 15-minute intervals, max 1 hour from start
+        passcode:
+          type: string
+          pattern: '^[0-9]{4}$'
+          description: 4-digit passcode for deletion
+
+    TimeSlot:
+      type: object
+      required:
+        - startTime
+        - endTime
+        - available
+      properties:
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+        available:
+          type: boolean
+
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          enum:
+            - TIME_CONFLICT
+            - PAST_TIME
+            - INVALID_TIME_INTERVAL
+            - DURATION_TOO_LONG
+            - INVALID_PASSCODE
+        message:
+          type: string

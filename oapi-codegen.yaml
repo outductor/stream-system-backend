@@ -1,0 +1,5 @@
+package: api
+generate:
+  - types
+  - spec
+output: internal/api/generated.go
