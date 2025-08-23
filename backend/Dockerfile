@@ -18,9 +18,6 @@ RUN apk add --no-cache ffmpeg ca-certificates
 WORKDIR /app
 
 COPY --from=builder /app/bin/stream-server .
-COPY api/openapi.yaml ./api/
-
-RUN mkdir -p media/hls
 
 EXPOSE 8080 1935
 

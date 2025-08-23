@@ -12,7 +12,7 @@ build:
 
 # Generate API code from OpenAPI spec
 generate-api:
-	oapi-codegen -package api -generate types,server,spec api/openapi.yaml > internal/api/generated.go
+	oapi-codegen -package api -generate types,server,spec ../api/openapi.yaml > internal/api/generated.go
 
 # Run the application
 run: build

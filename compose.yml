@@ -16,8 +16,8 @@ services:
       timeout: 5s
       retries: 5
 
-  backend-api-server:
-    build: .
+  backend:
+    build: ./backend
     ports:
       - "18080:8080"
       - "11935:1935"
