@@ -35,7 +35,7 @@ export function ReservationForm({ date, onClose, onSuccess }: ReservationFormPro
     const times: { value: string; label: string; available: boolean }[] = [];
     
     for (let hour = 0; hour < 24; hour++) {
-      for (let minute of [0, 15, 30, 45]) {
+      for (const minute of [0, 15, 30, 45]) {
         const time = setMinutes(setHours(new Date(date), hour), minute);
         const timeString = format(time, "yyyy-MM-dd'T'HH:mm:ss'Z'");
         

@@ -42,7 +42,7 @@ export function TimeSlotGrid({ date, reservations, onSlotClick }: TimeSlotGridPr
     for (let hour = 0; hour < 24; hour++) {
       const hourSlots: React.ReactElement[] = [];
       
-      for (let minute of [0, 15, 30, 45]) {
+      for (const minute of [0, 15, 30, 45]) {
         const slotTime = setMinutes(setHours(new Date(date), hour), minute);
         const timeString = format(slotTime, "yyyy-MM-dd'T'HH:mm:ss'Z'");
         

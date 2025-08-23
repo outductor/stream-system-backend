@@ -5,8 +5,6 @@ export interface StreamStatus {
   currentStartTime?: string;
   currentEndTime?: string;
   nextStartTime?: string;
-  rtmpUrl: string;
-  hlsUrl: string;
 }
 
 export interface Reservation {

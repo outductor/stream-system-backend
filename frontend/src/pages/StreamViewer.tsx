@@ -3,6 +3,8 @@ import { useStreamStatus } from '../hooks/useStreamStatus';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 
+const HLS_ENDPOINT = import.meta.env.VITE_HLS_ENDPOINT || 'http://localhost:8888/hls/stream';
+
 export function StreamViewer() {
   const { status, loading, error } = useStreamStatus();
 
@@ -64,7 +66,7 @@ export function StreamViewer() {
 
       <div className="player-container">
         {status.isLive ? (
-          <HLSPlayer src={status.hlsUrl} />
+          <HLSPlayer src={HLS_ENDPOINT} />
         ) : (
           <div className="offline-message">
             <p>現在配信はオフラインです</p>
