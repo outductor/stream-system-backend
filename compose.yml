@@ -12,9 +12,12 @@ services:
     restart: unless-stopped
 
   frontend:
-    build: ./frontend
-    expose:
-      - "80"
+    build:
+      context: ./frontend
+      # TODO: in production, replace the host with the actual domain name
+      args:
+        - VITE_API_BASE_URL=http://127.0.0.1/api/v1
+        - VITE_HLS_ENDPOINT=http://127.0.0.1/hls/stream-endpoint/index.m3u8
     environment:
       - NODE_ENV=production
     restart: unless-stopped
