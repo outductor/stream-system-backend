@@ -1,7 +1,6 @@
 package config
 
 import (
-	"fmt"
 	"os"
 	"strconv"
 )
@@ -9,8 +8,6 @@ import (
 type Config struct {
 	Server   ServerConfig
 	Database DatabaseConfig
-	RTMP     RTMPConfig
-	HLS      HLSConfig
 	LogLevel string
 }
 
@@ -28,15 +25,6 @@ type DatabaseConfig struct {
 	SSLMode  string
 }
 
-type RTMPConfig struct {
-	Port      int
-	StreamKey string
-}
-
-type HLSConfig struct {
-	OutputDir string
-}
-
 func Load() (*Config, error) {
 	cfg := &Config{
 		Server: ServerConfig{
@@ -51,18 +39,7 @@ func Load() (*Config, error) {
 			DBName:   getEnv("DB_NAME", "stream_system"),
 			SSLMode:  getEnv("DB_SSLMODE", "disable"),
 		},
-		RTMP: RTMPConfig{
-			Port:      getEnvAsInt("RTMP_PORT", 1935),
-			StreamKey: getEnv("RTMP_STREAM_KEY", "djevent2024"),
-		},
-		HLS: HLSConfig{
-			OutputDir: getEnv("HLS_OUTPUT_DIR", "./media"),
-		},
 		LogLevel: getEnv("LOG_LEVEL", "info"),
-	}
-
-	if cfg.RTMP.StreamKey == "" {
-		return nil, fmt.Errorf("RTMP_STREAM_KEY is required")
 	}
 
 	return cfg, nil

@@ -1,0 +1,10 @@
+## See https://github.com/bluenviron/mediamtx/blob/main/mediamtx.yml for the full config.
+
+authMethod: internal
+authInternalUsers:
+- user: mediamtx-streaming-usr
+  pass: mediamtx-streaming-passwd
+  ips: []
+  permissions:
+  - action: publish
+    path: stream-endpoint

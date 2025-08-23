@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/dj-event/stream-system/internal/db"
-	"github.com/dj-event/stream-system/internal/rtmp"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	openapi_types "github.com/oapi-codegen/runtime/types"
@@ -15,19 +14,13 @@ import (
 
 type Handler struct {
 	db         *db.DB
-	rtmpServer *rtmp.Server
 	logger     *logrus.Logger
-	rtmpURL    string
-	hlsURL     string
 }
 
-func NewHandler(database *db.DB, rtmpServer *rtmp.Server, rtmpURL, hlsURL string, logger *logrus.Logger) *Handler {
+func NewHandler(database *db.DB, logger *logrus.Logger) *Handler {
 	return &Handler{
-		db:         database,
-		rtmpServer: rtmpServer,
-		logger:     logger,
-		rtmpURL:    rtmpURL,
-		hlsURL:     hlsURL,
+		db:     database,
+		logger: logger,
 	}
 }
 
@@ -38,12 +31,11 @@ func (h *Handler) GetStreamStatus(w http.ResponseWriter, r *http.Request) {
 		currentNext = &db.CurrentNextDJ{}
 	}
 
-	isLive := h.rtmpServer.IsLive()
+	// TODO: somehow compute this state
+	isLive := true
 
 	status := StreamStatus{
 		IsLive:  isLive,
-		RtmpUrl: h.rtmpURL,
-		HlsUrl:  h.hlsURL,
 	}
 
 	if currentNext.CurrentDJName != nil {

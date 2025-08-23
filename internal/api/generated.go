@@ -8,12 +8,15 @@ import (
 	"compress/gzip"
 	"encoding/base64"
 	"fmt"
+	"net/http"
 	"net/url"
 	"path"
 	"strings"
 	"time"
 
 	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/labstack/echo/v4"
+	"github.com/oapi-codegen/runtime"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
@@ -72,9 +75,6 @@ type StreamStatus struct {
 	// CurrentStartTime Start time of current session
 	CurrentStartTime *time.Time `json:"currentStartTime,omitempty"`
 
-	// HlsUrl HLS playback URL for viewers
-	HlsUrl string `json:"hlsUrl"`
-
 	// IsLive Whether stream is currently live
 	IsLive bool `json:"isLive"`
 
@@ -83,9 +83,6 @@ type StreamStatus struct {
 
 	// NextStartTime Start time of next session
 	NextStartTime *time.Time `json:"nextStartTime,omitempty"`
-
-	// RtmpUrl RTMP ingest URL for DJ
-	RtmpUrl string `json:"rtmpUrl"`
 }
 
 // TimeSlot defines model for TimeSlot.
@@ -118,31 +115,160 @@ type CreateReservationJSONRequestBody = CreateReservationRequest
 // DeleteReservationJSONRequestBody defines body for DeleteReservation for application/json ContentType.
 type DeleteReservationJSONRequestBody DeleteReservationJSONBody
 
+// ServerInterface represents all server handlers.
+type ServerInterface interface {
+	// Get available time slots
+	// (GET /available-slots)
+	GetAvailableSlots(ctx echo.Context, params GetAvailableSlotsParams) error
+	// Get reservations for today and tomorrow
+	// (GET /reservations)
+	GetReservations(ctx echo.Context, params GetReservationsParams) error
+	// Create a new reservation
+	// (POST /reservations)
+	CreateReservation(ctx echo.Context) error
+	// Delete a reservation
+	// (DELETE /reservations/{reservationId})
+	DeleteReservation(ctx echo.Context, reservationId openapi_types.UUID) error
+	// Get current stream status
+	// (GET /stream/status)
+	GetStreamStatus(ctx echo.Context) error
+}
+
+// ServerInterfaceWrapper converts echo contexts to parameters.
+type ServerInterfaceWrapper struct {
+	Handler ServerInterface
+}
+
+// GetAvailableSlots converts echo context to params.
+func (w *ServerInterfaceWrapper) GetAvailableSlots(ctx echo.Context) error {
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetAvailableSlotsParams
+	// ------------- Required query parameter "date" -------------
+
+	err = runtime.BindQueryParameter("form", true, true, "date", ctx.QueryParams(), &params.Date)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter date: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetAvailableSlots(ctx, params)
+	return err
+}
+
+// GetReservations converts echo context to params.
+func (w *ServerInterfaceWrapper) GetReservations(ctx echo.Context) error {
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetReservationsParams
+	// ------------- Optional query parameter "date" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "date", ctx.QueryParams(), &params.Date)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter date: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetReservations(ctx, params)
+	return err
+}
+
+// CreateReservation converts echo context to params.
+func (w *ServerInterfaceWrapper) CreateReservation(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.CreateReservation(ctx)
+	return err
+}
+
+// DeleteReservation converts echo context to params.
+func (w *ServerInterfaceWrapper) DeleteReservation(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "reservationId" -------------
+	var reservationId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "reservationId", ctx.Param("reservationId"), &reservationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter reservationId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.DeleteReservation(ctx, reservationId)
+	return err
+}
+
+// GetStreamStatus converts echo context to params.
+func (w *ServerInterfaceWrapper) GetStreamStatus(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetStreamStatus(ctx)
+	return err
+}
+
+// This is a simple interface which specifies echo.Route addition functions which
+// are present on both echo.Echo and echo.Group, since we want to allow using
+// either of them for path registration
+type EchoRouter interface {
+	CONNECT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
+	DELETE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
+	GET(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
+	HEAD(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
+	OPTIONS(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
+	PATCH(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
+	POST(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
+	PUT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
+	TRACE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
+}
+
+// RegisterHandlers adds each server route to the EchoRouter.
+func RegisterHandlers(router EchoRouter, si ServerInterface) {
+	RegisterHandlersWithBaseURL(router, si, "")
+}
+
+// Registers handlers, and prepends BaseURL to the paths, so that the paths
+// can be served under a prefix.
+func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL string) {
+
+	wrapper := ServerInterfaceWrapper{
+		Handler: si,
+	}
+
+	router.GET(baseURL+"/available-slots", wrapper.GetAvailableSlots)
+	router.GET(baseURL+"/reservations", wrapper.GetReservations)
+	router.POST(baseURL+"/reservations", wrapper.CreateReservation)
+	router.DELETE(baseURL+"/reservations/:reservationId", wrapper.DeleteReservation)
+	router.GET(baseURL+"/stream/status", wrapper.GetStreamStatus)
+
+}
+
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/8xXUXPaOBD+Kzu6PqQzToG73EyPNy7QHh2aZID2Hjq5jGIvoJwsudKalMnw328kGbBj",
-	"hzpNH+4NrNXu6vu+3ZUeWKzTTCtUZFn/gdl4hSn3P88NcsIpWjRrTkKrKX7N0ZJby4zO0JBAb5ncXfAU",
-	"/S+0sRGZs2Z9NvwAibCZ5BtQPEU4wVTfCQtcSn2PyWsWsZR/m6Ba0or1e91uxFKh9v8jRpsMWZ9ZMkIt",
-	"2TZiqJK5aAr1MbcEtwhaQe/301SonBCEIpe7tBGk/Bv0YKVzAwujU7DEDbGILbRJObE+SzjhKTnfDWEz",
-	"bm2sk4a4Z6eJWAqCnQUstIEEJfp1t5MIjbP850v39I/rh7Ptq6YIPp8fOVrLM2wjZvBrLgwmrP9lx1g5",
-	"7gHc0nmv94707R3G5FIdGaNNXQQ7fFDlqQsxH38c3ZxfXrybjM/nLGJXg9n8xn1kERtffB5MxkP/92Z8",
-	"MR9NPw8mLGLDT9PBfHx5cTO/vLyZXF68L9leDWaz88vhqJTTAb4UreVLH//4wX2WB/um85UU33BKXxTJ",
-	"wFdBO/H8xOo4Vg/tkhFJxTbPRfJdOf6AvrzX74jsAGUTCzMyyNMZccptAw25MahoeFeH1cUEvYDCBIYf",
-	"4ETlUoJYgNKgFYKw4PpckssAc+34xd7RU91mpBJwOJTjWLQ21Hw7Jop9s6cL3y+9OM5K2k9G1r3/NZmB",
-	"E98tj/+FT9OJ71xrgfdoKk0lN6JRSHYi1g1J/71CWqEB6/lzUBeJyw1It2Pv61ZriVw5Zwq/HeXSrcPw",
-	"Q1Mebqk1ht7PcwE0lGaNCE7nH69AqCVa2gPokzyO3eNSCUAe4uwpayoLd8qZ1A1DmK+5kPxWlptgCeJn",
-	"d4qXtoDmoj9kWT+d8yDUQteRHlyNC3QB174IvLqEWgIvSpGcU0i54ktMUbnZToIcGq7Rjvyu2X7XbGMJ",
-	"UxhcjVnE1mhsiNN7033TdYfXGSqeCdZnv/lPfpCvPM6d/RFOrdTh1rRET4ijw8+NccL67D3SYGc685bO",
-	"i+Epkiux/pcHJlzQrzmaDYuY8lPCI8zKUJLJMSouZjUuGmi4dpttppUNwvi12w3zWZHDxUkly6SIfaad",
-	"OxvG3MG/IEz9xlcGF6zPfukcroid4n7Y2etwu0+AG8M3gcVH7O1QCHUYUHNmNk9TbjYBK+BNZhEjvnRg",
-	"uTPtxrJl1257p/LpCA3Tsl2NhGqy74QkNHC7AQcvnGi/wGUECS54LskCaSCd8E3Qnk61MfrezZEjdP7P",
-	"6CvfcVowOBGWXP+sAF5nsLzs67UO09OERizTtoG/2jOkKA609KdONs/C5hgkTz53ttXO5spxW+Oo99Py",
-	"qFBTp6K0DMUNyjF49kyVHMsgXPAbYo/VmkuRQAE/nPhCjbVaSBFT5B5BYdZGgBS/ef1IIgFh4KDwvqyV",
-	"9kXeeSj9GyfbMCkkEtZ1M/Tfq7ppar+usR/KteK/XRtuvkOHOv4xmVYHe/vHZ+v35qNRfeS510b7Zw1X",
-	"o5JKA0GFSnt1252q9ll4w+84VZpgoXOVPNJYYB14e32Fq0TH7l8aT02RyovkhU36WPlV4jRU4fnuIVDc",
-	"sFVQYugXj1tyXDW2u+x3gITvDgq3Fc16Vxu5u/GyFVHW73SkjrlcaUv9t9233Q7PRGfdY9vr7X8BAAD/",
-	"/28/BIw/EgAA",
+	"H4sIAAAAAAAC/8xXT2/buBP9KgP+ekgBpbJ/mwW6unljt3DgJkHs7R6KbMBYY5sBRarkyK0R+LsvSMq2",
+	"FCmu0vSwN1sazp/33gxHj2yus1wrVGRZ8sjsfIUZ9z/PDXLCG7Ro1pyEVjf4tUBL7l1udI6GBHrL9OGS",
+	"Z+h/oZ0bkTtrlrDhBaTC5pJvQPEM4QQz/SAscCn1N0zfsohl/PsE1ZJWLOn3ehHLhNr/jxhtcmQJs2SE",
+	"WrJtxFClM9EW6lNhCe4RtIL+76eZUAUhCEUud2kjyPh36MNKFwYWRmdgiRtiEVtok3FiCUs54Sk53y1h",
+	"c27tXKctcc9OU7EUBDsLWGgDKUr0791JIjTO8p8vvdM/bh/Ptm/aIvh8fqa0jjVsI2bwayEMpiz5smOs",
+	"GvcAbqXe270jff+Ac3KpjozRpimCHT6oisyFmI0/je7Ory4/TMbnMxax68F0ducesoiNLz8PJuOh/3s3",
+	"vpyNbj4PJixiw79uBrPx1eXd7OrqbnJ1+bFiez2YTs+vhqNKTgf4MrSWL33844X7LA/2bfVVFN9SpW+K",
+	"dOC7oJt4fmF3HOuHbsmItGZbFCL9oRx/Ql/e6w9EdoCyjYUpGeTZlDgVtoWGwhhUNHxowupigl5AaQLD",
+	"CzhRhZQgFqA0aIUgLLg5lxYywNwovzw7em7ajFQKDodqHIvWhp7vxkR5bvp84/tXr44j7ESsW7z/vUJa",
+	"oQHrgXaYlBHkBqQ7sfd1r7VErpwzhd+Pgu7ew/CiLQ/3qnOx3s/LKn2qwFB2m7RcAlOpWy4yvuZC8ntZ",
+	"HSSV6l/cba9to/bGOWTZrM55EGqhmwAPrsf+chpeAK69kDzxQi2Bl3Im5xQyrvgSM1TufiRBDg03rEb+",
+	"1HR/arqxhBkMrscsYms0NsTpv+u967nidY6K54Il7Df/yF+GK49zvC/h1EodNo8lekIcHX72jlOWsI9I",
+	"g53p1Fs6L4ZnSGgsS748MuGCfi3QbFjElJ+0HmFWhZJMgVG53DS4aKHh1h22uVY2COP/vV644xQ5XJxU",
+	"8lyKuc80frDhqjj4F4SZP/jG4IIl7H/xYc2Kyx0r3utwu0+AG8M3gcUn7O1QCC0SUHNmtsgybjYBK+Bt",
+	"ZhEjvnRguZp2V5tlt+54XHt0hIabql2DhHqyH4QkNHC/AQcvnGj/gssIUlzwQpIF0kA65ZugPZ1pY/Q3",
+	"N4uP0Pkfo6+6J3RgcCIsudFWA7zJYPW179cmTM8TGrFc2xb+Gqt82Rxo6U+dbl6EzTFInv1k2NYnm2vH",
+	"bYOj/i/Lo0ZNk4rKayi3EMfg2QtVciyDsCS3xB6rNZcihRJ+OPGNOtdqIcWcIvchEa7BCJDm794+kUhA",
+	"GDgo/FbVSvcmjx8r/8bpNtwUEgmbuhn653XdtI1fN9gP7Vrz320Mt++hoY9/Tqb1i737B1znb7YnV/WR",
+	"T6Yu2j9rZlZVaSCoVGm/abtT1T4Lb/gDp0oTLHSh0icaC6wD766vsErEdr+tP3eL1Lb6Vw7pY+1Xi9PS",
+	"hee7ZbpcflVQYpgXT0fyvG5sd9nvAAnPHRTuKJr1rjcKI1nCVkR5EsdSz7lcaUvJ+977XsxzEa/7bHu7",
+	"/TcAAP//6bwjaoMRAAA=",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

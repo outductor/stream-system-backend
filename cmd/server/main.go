@@ -6,14 +6,12 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"syscall"
 	"time"
 
 	"github.com/dj-event/stream-system/internal/api"
 	"github.com/dj-event/stream-system/internal/config"
 	"github.com/dj-event/stream-system/internal/db"
-	"github.com/dj-event/stream-system/internal/rtmp"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
@@ -37,10 +35,6 @@ func main() {
 	}
 	logger.SetLevel(level)
 
-	if err := os.MkdirAll(cfg.HLS.OutputDir, 0755); err != nil {
-		logger.Fatalf("Failed to create output directory: %v", err)
-	}
-
 	database, err := db.New(db.Config{
 		Host:     cfg.Database.Host,
 		Port:     cfg.Database.Port,
@@ -58,16 +52,7 @@ func main() {
 		logger.Fatalf("Failed to run migrations: %v", err)
 	}
 
-	rtmpAddr := fmt.Sprintf(":%d", cfg.RTMP.Port)
-	rtmpServer := rtmp.NewServer(rtmpAddr, cfg.RTMP.StreamKey, cfg.HLS.OutputDir, logger)
-	if err := rtmpServer.Start(); err != nil {
-		logger.Fatalf("Failed to start RTMP server: %v", err)
-	}
-
-	rtmpURL := fmt.Sprintf("rtmp://localhost:%d/live/%s", cfg.RTMP.Port, cfg.RTMP.StreamKey)
-	hlsURL := fmt.Sprintf("http://localhost:%d/hls/stream.m3u8", cfg.Server.Port)
-
-	handler := api.NewHandler(database, rtmpServer, rtmpURL, hlsURL, logger)
+	handler := api.NewHandler(database, logger)
 
 	r := chi.NewRouter()
 
@@ -89,9 +74,6 @@ func main() {
 		r.Delete("/reservations/{reservationId}", handler.DeleteReservation)
 		r.Get("/available-slots", handler.GetAvailableSlots)
 	})
-
-	hlsDir := filepath.Join(cfg.HLS.OutputDir, "hls")
-	r.Handle("/hls/*", http.StripPrefix("/hls/", http.FileServer(http.Dir(hlsDir))))
 
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)

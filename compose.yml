@@ -16,7 +16,7 @@ services:
       timeout: 5s
       retries: 5
 
-  stream-server:
+  backend-api-server:
     build: .
     ports:
       - "18080:8080"
@@ -39,6 +39,14 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+
+  mediamtx:
+    build: ./mediamtx
+    ports:
+      # RTMP (incoming video) port
+      - "19350:1935"
+      # HLS (outgoing video) port
+      - "8888:8888"
 
 volumes:
   postgres_data:

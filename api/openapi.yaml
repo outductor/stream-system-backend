@@ -133,8 +133,6 @@ components:
       type: object
       required:
         - isLive
-        - rtmpUrl
-        - hlsUrl
       properties:
         isLive:
           type: boolean
@@ -157,14 +155,6 @@ components:
           type: string
           format: date-time
           description: Start time of next session
-        rtmpUrl:
-          type: string
-          format: uri
-          description: RTMP ingest URL for DJ
-        hlsUrl:
-          type: string
-          format: uri
-          description: HLS playback URL for viewers
 
     Reservation:
       type: object
