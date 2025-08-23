@@ -41,25 +41,6 @@ CREATE TABLE IF NOT EXISTS reservations (
 CREATE INDEX idx_reservations_start_time ON reservations(start_time);
 CREATE INDEX idx_reservations_end_time ON reservations(end_time);
 
--- Stream sessions table (for tracking stream history)
-CREATE TABLE IF NOT EXISTS stream_sessions (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    reservation_id UUID REFERENCES reservations(id) ON DELETE SET NULL,
-    started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    ended_at TIMESTAMP,
-    rtmp_key VARCHAR(255) NOT NULL,
-    viewer_count INTEGER DEFAULT 0,
-    peak_viewers INTEGER DEFAULT 0
-);
-
--- Viewer stats table (for real-time viewer tracking)
-CREATE TABLE IF NOT EXISTS viewer_stats (
-    id SERIAL PRIMARY KEY,
-    session_id UUID REFERENCES stream_sessions(id) ON DELETE CASCADE,
-    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    viewer_count INTEGER NOT NULL
-);
-
 -- Create a view for current/next DJ info
 CREATE OR REPLACE VIEW current_next_dj AS
 WITH current_dj AS (
