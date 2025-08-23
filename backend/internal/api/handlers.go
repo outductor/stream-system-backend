@@ -13,8 +13,8 @@ import (
 )
 
 type Handler struct {
-	db         *db.DB
-	logger     *logrus.Logger
+	db     *db.DB
+	logger *logrus.Logger
 }
 
 func NewHandler(database *db.DB, logger *logrus.Logger) *Handler {
@@ -35,7 +35,7 @@ func (h *Handler) GetStreamStatus(w http.ResponseWriter, r *http.Request) {
 	isLive := true
 
 	status := StreamStatus{
-		IsLive:  isLive,
+		IsLive: isLive,
 	}
 
 	if currentNext.CurrentDJName != nil {
@@ -54,19 +54,7 @@ func (h *Handler) GetStreamStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetReservations(w http.ResponseWriter, r *http.Request) {
-	dateStr := r.URL.Query().Get("date")
-	var date *time.Time
-	
-	if dateStr != "" {
-		parsedDate, err := time.Parse("2006-01-02", dateStr)
-		if err != nil {
-			h.sendError(w, http.StatusBadRequest, "INVALID_DATE", "Invalid date format")
-			return
-		}
-		date = &parsedDate
-	}
-
-	reservations, err := h.db.GetReservations(date)
+	reservations, err := h.db.GetReservations()
 	if err != nil {
 		h.logger.Errorf("Failed to get reservations: %v", err)
 		h.sendError(w, http.StatusInternalServerError, "DB_ERROR", "Failed to get reservations")

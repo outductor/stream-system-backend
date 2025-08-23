@@ -28,13 +28,6 @@ paths:
       operationId: getReservations
       tags:
         - reservations
-      parameters:
-        - name: date
-          in: query
-          schema:
-            type: string
-            format: date
-          description: Filter by date (optional, defaults to today and tomorrow)
       responses:
         '200':
           description: List of reservations
