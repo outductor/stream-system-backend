@@ -12,7 +12,6 @@ type DateSelection = 'any' | 'today' | 'tomorrow' | 'dayAfterTomorrow';
 export function Timetable() {
   const [selectedDate, setSelectedDate] = useState<DateSelection>('any');
   const [showReservationForm, setShowReservationForm] = useState(false);
-  const [showSlotGrid, setShowSlotGrid] = useState(false);
   const [deleteReservation, setDeleteReservation] = useState<Reservation | null>(null);
   const { reservations, loading, error } = useReservations(selectedDate);
 
@@ -135,12 +134,6 @@ export function Timetable() {
         
         <div className="action-buttons">
           <button 
-            className="toggle-grid-button"
-            onClick={() => setShowSlotGrid(!showSlotGrid)}
-          >
-            {showSlotGrid ? '一覧表示' : '空き時間を見る'}
-          </button>
-          <button 
             className="add-reservation-button"
             onClick={() => {
               setShowReservationForm(true);
@@ -185,23 +178,21 @@ export function Timetable() {
         </div>
       )}
       
-      {showSlotGrid && (
-        <div className="slot-grid-section">
-          <h2>空き時間状況</h2>
-          {daysSelected.map(date => (
-            <div key={date.toString()} className="date-slots">
-              <h3>{formatDateHeader(date)}</h3>
-              <TimeSlotGrid 
-                date={date} 
-                reservations={reservations.filter(r =>
-                  r.startTime.toZonedDateTimeISO('Asia/Tokyo').toPlainDate().equals(date)
-                )}
-                onSlotClick={handleSlotClick}
-              />
-            </div>
-          ))}
-        </div>
-      )}
+      <div className="slot-grid-section">
+        <h2>空き時間状況</h2>
+        {daysSelected.map(date => (
+          <div key={date.toString()} className="date-slots">
+            <h3>{formatDateHeader(date)}</h3>
+            <TimeSlotGrid 
+              date={date} 
+              reservations={reservations.filter(r =>
+                r.startTime.toZonedDateTimeISO('Asia/Tokyo').toPlainDate().equals(date)
+              )}
+              onSlotClick={handleSlotClick}
+            />
+          </div>
+        ))}
+      </div>
       
       {showReservationForm && (
         <ReservationForm 
