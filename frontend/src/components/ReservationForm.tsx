@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react';
-import { format, setMinutes, setHours, addMinutes, parseISO } from 'date-fns';
+import { Temporal } from 'temporal-polyfill';
 import { reservationsApi } from '../api/client';
 import type { TimeSlot } from '../types/api';
 
 interface ReservationFormProps {
-  date: string;
   onClose: () => void;
   onSuccess: () => void;
 }
 
-export function ReservationForm({ date, onClose, onSuccess }: ReservationFormProps) {
+export function ReservationForm({ onClose, onSuccess }: ReservationFormProps) {
+  const [selectedDate, setSelectedDate] = useState('');
   const [djName, setDjName] = useState('');
   const [startTime, setStartTime] = useState('');
   const [duration, setDuration] = useState(60);
@@ -18,41 +18,87 @@ export function ReservationForm({ date, onClose, onSuccess }: ReservationFormPro
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Initialize with today's date
+  useEffect(() => {
+    const today = Temporal.Now.plainDateISO();
+    setSelectedDate(today.toString());
+  }, []);
+
+  // Fetch available slots once when component mounts
   useEffect(() => {
     const fetchAvailableSlots = async () => {
       try {
-        const slots = await reservationsApi.getAvailableSlots(date);
+        const now = Temporal.Now.instant();
+        const startTime = now.toString();
+        // endTime will be automatically set to 72 hours from now by the backend
+        const slots = await reservationsApi.getAvailableSlots(startTime);
         setAvailableSlots(slots);
       } catch (err) {
         console.error('Failed to fetch available slots:', err);
       }
     };
     fetchAvailableSlots();
-  }, [date]);
+  }, []);
+
+  // Generate date options for the next 3 days
+  const getDateOptions = () => {
+    const today = Temporal.Now.plainDateISO();
+    const dates = [];
+    
+    for (let i = 0; i < 3; i++) {
+      const date = today.add({ days: i });
+      const dateString = date.toString();
+      const label = i === 0 ? '今日' : i === 1 ? '明日' : `${date.month}月${date.day}日`;
+      
+      dates.push({
+        value: dateString,
+        label: `${label} (${date.month}/${date.day})`
+      });
+    }
+    
+    return dates;
+  };
 
   const getAvailableStartTimes = () => {
-    const now = new Date();
-    const times: { value: string; label: string; available: boolean }[] = [];
+    if (!selectedDate) return [];
     
+    const times: { value: string; label: string; available: boolean }[] = [];
+    const selectedPlainDate = Temporal.PlainDate.from(selectedDate);
+    const now = Temporal.Now.plainDateTimeISO();
+    const today = Temporal.Now.plainDateISO();
+    
+    // Filter slots for the selected date
+    const slotsForDate = availableSlots.filter(slot => {
+      const slotInstant = Temporal.Instant.from(slot.startTime);
+      const slotDateTime = slotInstant.toZonedDateTimeISO('UTC').toPlainDateTime();
+      const slotDate = slotDateTime.toPlainDate();
+      return slotDate.equals(selectedPlainDate);
+    });
+    
+    // Generate all possible time slots for the selected date
     for (let hour = 0; hour < 24; hour++) {
       for (const minute of [0, 15, 30, 45]) {
-        const time = setMinutes(setHours(new Date(date), hour), minute);
-        const timeString = format(time, "yyyy-MM-dd'T'HH:mm:ss'Z'");
+        const timeOnDate = selectedPlainDate.toPlainDateTime({ hour, minute });
         
-        // Check if this time is in the past
-        if (time <= now && date === format(now, 'yyyy-MM-dd')) {
+        // Skip past times for today
+        if (selectedPlainDate.equals(today) && Temporal.PlainDateTime.compare(timeOnDate, now) <= 0) {
           continue;
         }
         
-        // Check if this slot is available
-        const slot = availableSlots.find(s => s.startTime === timeString);
+        // Convert to instant for API compatibility
+        const instant = timeOnDate.toZonedDateTime('UTC').toInstant();
+        const timeString = instant.toString();
+        const slot = slotsForDate.find(s => s.startTime === timeString);
         const available = slot ? slot.available : false;
         
-        times.push({
-          value: timeString,
-          label: format(time, 'HH:mm'),
-          available
-        });
+        // Only include slots that were returned by the API (within the 72-hour window)
+        if (slot) {
+          times.push({
+            value: timeString,
+            label: `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`,
+            available
+          });
+        }
       }
     }
     
@@ -65,10 +111,9 @@ export function ReservationForm({ date, onClose, onSuccess }: ReservationFormPro
     setLoading(true);
 
     try {
-      const endTime = format(
-        addMinutes(parseISO(startTime), duration),
-        "yyyy-MM-dd'T'HH:mm:ss'Z'"
-      );
+      const startInstant = Temporal.Instant.from(startTime);
+      const endInstant = startInstant.add({ minutes: duration });
+      const endTime = endInstant.toString();
 
       await reservationsApi.createReservation({
         djName,
@@ -84,7 +129,9 @@ export function ReservationForm({ date, onClose, onSuccess }: ReservationFormPro
           TIME_CONFLICT: '指定された時間帯は既に予約されています',
           PAST_TIME: '過去の時間は予約できません',
           INVALID_TIME_INTERVAL: '時間は15分刻みで指定してください',
-          DURATION_TOO_LONG: '予約は最大1時間までです'
+          DURATION_TOO_LONG: '予約は最大1時間までです',
+          INVALID_TIME_RANGE: '時間の指定が無効です',
+          RANGE_TOO_LARGE: '検索範囲が大きすぎます'
         };
         setError(errorMessages[err.response.data.code] || err.response.data.message);
       } else {
@@ -95,6 +142,7 @@ export function ReservationForm({ date, onClose, onSuccess }: ReservationFormPro
     }
   };
 
+  const dateOptions = getDateOptions();
   const startTimes = getAvailableStartTimes();
 
   return (
@@ -116,14 +164,35 @@ export function ReservationForm({ date, onClose, onSuccess }: ReservationFormPro
           </div>
 
           <div className="form-group">
+            <label htmlFor="selectedDate">日付</label>
+            <select
+              id="selectedDate"
+              value={selectedDate}
+              onChange={(e) => {
+                setSelectedDate(e.target.value);
+                setStartTime(''); // Reset start time when date changes
+              }}
+              required
+            >
+              <option value="">日付を選択</option>
+              {dateOptions.map(({ value, label }) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="form-group">
             <label htmlFor="startTime">開始時刻</label>
             <select
               id="startTime"
               value={startTime}
               onChange={(e) => setStartTime(e.target.value)}
               required
+              disabled={!selectedDate}
             >
-              <option value="">選択してください</option>
+              <option value="">時刻を選択</option>
               {startTimes.map(({ value, label, available }) => (
                 <option key={value} value={value} disabled={!available}>
                   {label} {!available && '(予約済み)'}

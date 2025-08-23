@@ -35,9 +35,13 @@ export const reservationsApi = {
     });
   },
 
-  getAvailableSlots: async (date: string): Promise<TimeSlot[]> => {
+  getAvailableSlots: async (startTime: string, endTime?: string): Promise<TimeSlot[]> => {
+    const params: { startTime: string; endTime?: string } = { startTime };
+    if (endTime) {
+      params.endTime = endTime;
+    }
     const response = await apiClient.get<TimeSlot[]>('/available-slots', {
-      params: { date },
+      params,
     });
     return response.data;
   },

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Temporal } from 'temporal-polyfill';
 import { reservationsApi } from '../api/client';
 import type { Reservation } from '../types/api';
 
@@ -39,7 +40,7 @@ export function DeleteConfirmDialog({ reservation, onClose, onSuccess }: DeleteC
         
         <div className="reservation-info">
           <p><strong>DJ名:</strong> {reservation.djName}</p>
-          <p><strong>時間:</strong> {new Date(reservation.startTime).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })} - {new Date(reservation.endTime).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}</p>
+          <p><strong>時間:</strong> {Temporal.Instant.from(reservation.startTime).toZonedDateTimeISO('Asia/Tokyo').toPlainTime().toString({ smallestUnit: 'minute' })} - {Temporal.Instant.from(reservation.endTime).toZonedDateTimeISO('Asia/Tokyo').toPlainTime().toString({ smallestUnit: 'minute' })}</p>
         </div>
 
         <form onSubmit={handleDelete}>

@@ -136,6 +136,74 @@ func (db *DB) GetAvailableSlots(date time.Time) ([]TimeSlot, error) {
 	return slots, nil
 }
 
+func (db *DB) GetAvailableSlotsInRange(startTime, endTime time.Time) ([]TimeSlot, error) {
+	// Get reservations that might overlap with our time range
+	reservations, err := db.GetReservationsInRange(startTime.Add(-1*time.Hour), endTime.Add(1*time.Hour))
+	if err != nil {
+		return nil, err
+	}
+
+	slots := []TimeSlot{}
+	
+	// Round startTime down to the nearest 15-minute interval
+	startMinutes := startTime.Minute()
+	roundedStart := startTime.Truncate(time.Hour).Add(time.Duration(startMinutes/15*15) * time.Minute)
+	if roundedStart.Before(startTime) {
+		roundedStart = roundedStart.Add(15 * time.Minute)
+	}
+
+	currentTime := roundedStart
+	
+	// Generate 15-minute slots from the rounded start time to end time
+	for currentTime.Before(endTime) {
+		slotEnd := currentTime.Add(15 * time.Minute)
+		
+		// Only include slots that start at or after the original startTime
+		if currentTime.Before(startTime) {
+			currentTime = slotEnd
+			continue
+		}
+
+		available := true
+
+		// Check if this slot conflicts with any existing reservations
+		for _, reservation := range reservations {
+			if currentTime.Before(reservation.EndTime) && slotEnd.After(reservation.StartTime) {
+				available = false
+				break
+			}
+		}
+
+		slots = append(slots, TimeSlot{
+			StartTime: currentTime,
+			EndTime:   slotEnd,
+			Available: available,
+		})
+
+		currentTime = slotEnd
+	}
+
+	return slots, nil
+}
+
+func (db *DB) GetReservationsInRange(startTime, endTime time.Time) ([]Reservation, error) {
+	var reservations []Reservation
+	
+	query := `
+		SELECT id, dj_name, start_time, end_time, passcode, created_at
+		FROM reservations
+		WHERE start_time < $2 AND end_time > $1
+		ORDER BY start_time
+	`
+	
+	err := db.Select(&reservations, query, startTime, endTime)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get reservations in range: %w", err)
+	}
+
+	return reservations, nil
+}
+
 type TimeSlot struct {
 	StartTime time.Time
 	EndTime   time.Time

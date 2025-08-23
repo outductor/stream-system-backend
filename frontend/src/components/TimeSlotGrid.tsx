@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
-import { format, setHours, setMinutes, parseISO, isAfter } from 'date-fns';
+import { Temporal } from 'temporal-polyfill';
 import { reservationsApi } from '../api/client';
 import type { TimeSlot, Reservation } from '../types/api';
 
 interface TimeSlotGridProps {
   date: string;
   reservations: Reservation[];
-  onSlotClick: (date: string) => void;
+  onSlotClick: () => void;
 }
 
 export function TimeSlotGrid({ date, reservations, onSlotClick }: TimeSlotGridProps) {
@@ -16,7 +16,16 @@ export function TimeSlotGrid({ date, reservations, onSlotClick }: TimeSlotGridPr
   useEffect(() => {
     const fetchSlots = async () => {
       try {
-        const slots = await reservationsApi.getAvailableSlots(date);
+        // Create start time from the beginning of the specified date
+        const plainDate = Temporal.PlainDate.from(date);
+        const startOfDate = plainDate.toPlainDateTime({ hour: 0, minute: 0 });
+        const startTime = startOfDate.toZonedDateTime('UTC').toInstant().toString();
+        
+        // Create end time for the end of the specified date
+        const endOfDate = plainDate.toPlainDateTime({ hour: 23, minute: 59, second: 59, millisecond: 999 });
+        const endTime = endOfDate.toZonedDateTime('UTC').toInstant().toString();
+        
+        const slots = await reservationsApi.getAvailableSlots(startTime, endTime);
         setAvailableSlots(slots);
       } catch (err) {
         console.error('Failed to fetch available slots:', err);
@@ -29,35 +38,37 @@ export function TimeSlotGrid({ date, reservations, onSlotClick }: TimeSlotGridPr
 
   const getReservationForSlot = (slot: TimeSlot): Reservation | undefined => {
     return reservations.find(r => {
-      const resStart = parseISO(r.startTime);
-      const slotStart = parseISO(slot.startTime);
-      return resStart.getTime() === slotStart.getTime();
+      const resStart = Temporal.Instant.from(r.startTime);
+      const slotStart = Temporal.Instant.from(slot.startTime);
+      return resStart.equals(slotStart);
     });
   };
 
   const generateTimeSlots = () => {
     const slots: React.ReactElement[] = [];
-    const now = new Date();
+    const now = Temporal.Now.instant();
+    const plainDate = Temporal.PlainDate.from(date);
 
     for (let hour = 0; hour < 24; hour++) {
       const hourSlots: React.ReactElement[] = [];
       
       for (const minute of [0, 15, 30, 45]) {
-        const slotTime = setMinutes(setHours(new Date(date), hour), minute);
-        const timeString = format(slotTime, "yyyy-MM-dd'T'HH:mm:ss'Z'");
+        const slotTime = plainDate.toPlainDateTime({ hour, minute });
+        const slotInstant = slotTime.toZonedDateTime('UTC').toInstant();
+        const timeString = slotInstant.toString();
         
         const slot = availableSlots.find(s => s.startTime === timeString);
         const reservation = slot ? getReservationForSlot(slot) : undefined;
-        const isPast = !isAfter(slotTime, now);
+        const isPast = Temporal.Instant.compare(slotInstant, now) <= 0;
         const isAvailable = slot?.available && !isPast;
 
         hourSlots.push(
           <div
             key={`${hour}-${minute}`}
             className={`time-slot ${isAvailable ? 'available' : ''} ${reservation ? 'reserved' : ''} ${isPast ? 'past' : ''}`}
-            onClick={() => isAvailable && onSlotClick(date)}
+            onClick={() => isAvailable && onSlotClick()}
           >
-            <div className="slot-time">{format(slotTime, 'HH:mm')}</div>
+            <div className="slot-time">{hour.toString().padStart(2, '0')}:{minute.toString().padStart(2, '0')}</div>
             {reservation && (
               <div className="slot-dj">{reservation.djName}</div>
             )}

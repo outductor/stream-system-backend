@@ -1,7 +1,6 @@
 import { useState } from 'react';
+import { Temporal } from 'temporal-polyfill';
 import { useReservations } from '../hooks/useReservations';
-import { format, addDays, isToday, isTomorrow, parseISO } from 'date-fns';
-import { ja } from 'date-fns/locale';
 import type { Reservation } from '../types/api';
 import { CurrentTime } from '../components/CurrentTime';
 import { TimeSlotGrid } from '../components/TimeSlotGrid';
@@ -12,30 +11,41 @@ export function Timetable() {
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [showReservationForm, setShowReservationForm] = useState(false);
   const [showSlotGrid, setShowSlotGrid] = useState(false);
-  const [selectedReservationDate, setSelectedReservationDate] = useState<string>('');
   const [deleteReservation, setDeleteReservation] = useState<Reservation | null>(null);
   const { reservations, loading, error } = useReservations(selectedDate);
 
   const formatDateTime = (dateString: string) => {
-    const date = parseISO(dateString);
-    return format(date, 'HH:mm', { locale: ja });
+    const instant = Temporal.Instant.from(dateString);
+    const zonedDateTime = instant.toZonedDateTimeISO('Asia/Tokyo');
+    return zonedDateTime.toPlainTime().toString({ smallestUnit: 'minute' });
   };
 
   const formatDateHeader = (dateString: string) => {
-    const date = parseISO(dateString);
-    if (isToday(date)) {
+    const instant = Temporal.Instant.from(dateString + "T00:00:00Z");
+    const zonedDateTime = instant.toZonedDateTimeISO('Asia/Tokyo');
+    const date = zonedDateTime.toPlainDate();
+    const today = Temporal.Now.plainDateISO('Asia/Tokyo');
+    const tomorrow = today.add({ days: 1 });
+    
+    if (date.equals(today)) {
       return '今日';
-    } else if (isTomorrow(date)) {
+    } else if (date.equals(tomorrow)) {
       return '明日';
     }
-    return format(date, 'M月d日(E)', { locale: ja });
+    
+    const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+    const weekday = weekdays[date.dayOfWeek % 7];
+    return `${date.month}月${date.day}日(${weekday})`;
   };
 
   const groupReservationsByDate = (reservationList: Reservation[]) => {
     const grouped = new Map<string, Reservation[]>();
     
     reservationList.forEach(reservation => {
-      const dateKey = format(parseISO(reservation.startTime), 'yyyy-MM-dd');
+      const instant = Temporal.Instant.from(reservation.startTime);
+      const zonedDateTime = instant.toZonedDateTimeISO('Asia/Tokyo');
+      const dateKey = zonedDateTime.toPlainDate().toString();
+      
       if (!grouped.has(dateKey)) {
         grouped.set(dateKey, []);
       }
@@ -62,8 +72,8 @@ export function Timetable() {
   }
 
   const groupedReservations = groupReservationsByDate(reservations);
-  const today = format(new Date(), 'yyyy-MM-dd');
-  const tomorrow = format(addDays(new Date(), 1), 'yyyy-MM-dd');
+  const today = Temporal.Now.plainDateISO('Asia/Tokyo').toString();
+  const tomorrow = Temporal.Now.plainDateISO('Asia/Tokyo').add({ days: 1 }).toString();
 
   const handleReservationSuccess = () => {
     setShowReservationForm(false);
@@ -75,8 +85,7 @@ export function Timetable() {
     window.location.reload();
   };
 
-  const handleSlotClick = (date: string) => {
-    setSelectedReservationDate(date);
+  const handleSlotClick = () => {
     setShowReservationForm(true);
   };
 
@@ -119,7 +128,6 @@ export function Timetable() {
           <button 
             className="add-reservation-button"
             onClick={() => {
-              setSelectedReservationDate(selectedDate || today);
               setShowReservationForm(true);
             }}
           >
@@ -170,9 +178,12 @@ export function Timetable() {
               <h3>{formatDateHeader(date)}</h3>
               <TimeSlotGrid 
                 date={date} 
-                reservations={reservations.filter(r => 
-                  format(parseISO(r.startTime), 'yyyy-MM-dd') === date
-                )}
+                reservations={reservations.filter(r => {
+                  const instant = Temporal.Instant.from(r.startTime);
+                  const zonedDateTime = instant.toZonedDateTimeISO('Asia/Tokyo');
+                  const dateKey = zonedDateTime.toPlainDate().toString();
+                  return dateKey === date;
+                })}
                 onSlotClick={handleSlotClick}
               />
             </div>
@@ -182,7 +193,6 @@ export function Timetable() {
       
       {showReservationForm && (
         <ReservationForm 
-          date={selectedReservationDate}
           onClose={() => setShowReservationForm(false)}
           onSuccess={handleReservationSuccess}
         />

@@ -1,7 +1,6 @@
+import { Temporal } from 'temporal-polyfill';
 import { HLSPlayer } from '../components/HLSPlayer';
 import { useStreamStatus } from '../hooks/useStreamStatus';
-import { format } from 'date-fns';
-import { ja } from 'date-fns/locale';
 
 const HLS_ENDPOINT = import.meta.env.VITE_HLS_ENDPOINT || 'http://localhost:8888/hls/stream';
 
@@ -33,7 +32,7 @@ export function StreamViewer() {
   }
 
   const formatTime = (dateString: string) => {
-    return format(new Date(dateString), 'HH:mm', { locale: ja });
+    return Temporal.Instant.from(dateString).toZonedDateTimeISO('Asia/Tokyo').toPlainTime().toString({ smallestUnit: 'minute' });
   };
 
   return (

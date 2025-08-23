@@ -158,19 +158,51 @@ func (h *Handler) DeleteReservation(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetAvailableSlots(w http.ResponseWriter, r *http.Request) {
-	dateStr := r.URL.Query().Get("date")
-	if dateStr == "" {
-		h.sendError(w, http.StatusBadRequest, "MISSING_DATE", "Date parameter is required")
+	startTimeStr := r.URL.Query().Get("startTime")
+	if startTimeStr == "" {
+		h.sendError(w, http.StatusBadRequest, "INVALID_TIME_RANGE", "startTime parameter is required")
 		return
 	}
 
-	date, err := time.Parse("2006-01-02", dateStr)
+	startTime, err := time.Parse(time.RFC3339, startTimeStr)
 	if err != nil {
-		h.sendError(w, http.StatusBadRequest, "INVALID_DATE", "Invalid date format")
+		h.sendError(w, http.StatusBadRequest, "INVALID_TIME_RANGE", "Invalid startTime format, must be ISO 8601 UTC")
 		return
 	}
 
-	slots, err := h.db.GetAvailableSlots(date)
+	// Default to 72 hours if endTime is not provided
+	endTime := startTime.Add(72 * time.Hour)
+	endTimeStr := r.URL.Query().Get("endTime")
+	if endTimeStr != "" {
+		parsedEndTime, err := time.Parse(time.RFC3339, endTimeStr)
+		if err != nil {
+			h.sendError(w, http.StatusBadRequest, "INVALID_TIME_RANGE", "Invalid endTime format, must be ISO 8601 UTC")
+			return
+		}
+		endTime = parsedEndTime
+	}
+
+	// Validate time range
+	if endTime.Before(startTime) {
+		h.sendError(w, http.StatusBadRequest, "INVALID_TIME_RANGE", "endTime must be after startTime")
+		return
+	}
+
+	// Enforce 72-hour maximum range
+	maxRange := 72 * time.Hour
+	if endTime.Sub(startTime) > maxRange {
+		h.sendError(w, http.StatusBadRequest, "RANGE_TOO_LARGE", "Query range cannot exceed 72 hours")
+		return
+	}
+
+	// Ensure startTime is not in the past (with some tolerance for clock skew)
+	now := time.Now().UTC()
+	if startTime.Before(now.Add(-1 * time.Minute)) {
+		h.sendError(w, http.StatusBadRequest, "INVALID_TIME_RANGE", "startTime cannot be in the past")
+		return
+	}
+
+	slots, err := h.db.GetAvailableSlotsInRange(startTime, endTime)
 	if err != nil {
 		h.logger.Errorf("Failed to get available slots: %v", err)
 		h.sendError(w, http.StatusInternalServerError, "DB_ERROR", "Failed to get available slots")

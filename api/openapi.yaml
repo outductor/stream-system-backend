@@ -99,26 +99,40 @@ paths:
 
   /available-slots:
     get:
-      summary: Get available time slots
+      summary: Get available time slots within a time range
       operationId: getAvailableSlots
       tags:
         - reservations
       parameters:
-        - name: date
+        - name: startTime
           in: query
           required: true
           schema:
             type: string
-            format: date
+            format: date-time
+            description: Start of the query range (ISO 8601 UTC format)
+        - name: endTime
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+            description: End of the query range (ISO 8601 UTC format). Defaults to 72 hours from startTime if not provided.
       responses:
         '200':
-          description: Available time slots
+          description: Available time slots within the specified range
           content:
             application/json:
               schema:
                 type: array
                 items:
                   $ref: '#/components/schemas/TimeSlot'
+        '400':
+          description: Invalid time range or exceeds 72-hour limit
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
 components:
   schemas:
@@ -231,5 +245,7 @@ components:
             - INVALID_TIME_INTERVAL
             - DURATION_TOO_LONG
             - INVALID_PASSCODE
+            - INVALID_TIME_RANGE
+            - RANGE_TOO_LARGE
         message:
           type: string
