@@ -12,6 +12,7 @@ type DateSelection = 'any' | 'today' | 'tomorrow' | 'dayAfterTomorrow';
 export function Timetable() {
   const [selectedDate, setSelectedDate] = useState<DateSelection>('any');
   const [showReservationForm, setShowReservationForm] = useState(false);
+  const [reservationFormDefaultInstant, setReservationFormDefaultInstant] = useState<Temporal.Instant | null>(null);
   const [deleteReservation, setDeleteReservation] = useState<Reservation | null>(null);
   const { reservations, loading, error } = useReservations(selectedDate);
 
@@ -93,7 +94,8 @@ export function Timetable() {
     window.location.reload();
   };
 
-  const handleSlotClick = () => {
+  const handleSlotClick = (slotInstant: Temporal.Instant) => {
+    setReservationFormDefaultInstant(slotInstant);
     setShowReservationForm(true);
   };
 
@@ -136,6 +138,7 @@ export function Timetable() {
           <button 
             className="add-reservation-button"
             onClick={() => {
+              setReservationFormDefaultInstant(null);
               setShowReservationForm(true);
             }}
           >
@@ -198,6 +201,7 @@ export function Timetable() {
         <ReservationForm 
           onClose={() => setShowReservationForm(false)}
           onSuccess={handleReservationSuccess}
+          defaultStartInstant={reservationFormDefaultInstant}
         />
       )}
       

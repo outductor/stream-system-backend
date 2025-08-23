@@ -6,12 +6,14 @@ import type { TimeSlot } from '../types/api';
 interface ReservationFormProps {
   onClose: () => void;
   onSuccess: () => void;
+  defaultStartInstant: Temporal.Instant | null;
 }
 
-export function ReservationForm({ onClose, onSuccess }: ReservationFormProps) {
-  const [selectedDate, setSelectedDate] = useState('');
+export function ReservationForm({ onClose, onSuccess, defaultStartInstant }: ReservationFormProps) {
+  const [selectedDate, setSelectedDate] = useState(defaultStartInstant?.toZonedDateTimeISO('Asia/Tokyo')?.toPlainDate());
+  const [selectedStartTime, setSelectedStartTime] = useState(defaultStartInstant?.toZonedDateTimeISO('Asia/Tokyo')?.toPlainTime());
+
   const [djName, setDjName] = useState('');
-  const [startTime, setStartTime] = useState('');
   const [duration, setDuration] = useState(60);
   const [passcode, setPasscode] = useState('');
   const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([]);
@@ -20,17 +22,17 @@ export function ReservationForm({ onClose, onSuccess }: ReservationFormProps) {
 
   // Initialize with today's date
   useEffect(() => {
-    const today = Temporal.Now.plainDateISO();
-    setSelectedDate(today.toString());
+    if (!selectedDate) {
+      setSelectedDate(Temporal.Now.plainDateISO('Asia/Tokyo'));
+    }
   }, []);
 
   // Fetch available slots once when component mounts
   useEffect(() => {
     const fetchAvailableSlots = async () => {
       try {
-        const now = Temporal.Now.instant();
         // endTime will be automatically set to 72 hours from now by the backend
-        const slots = await reservationsApi.getAvailableSlots(now);
+        const slots = await reservationsApi.getAvailableSlots(Temporal.Now.instant());
         setAvailableSlots(slots);
       } catch (err) {
         console.error('Failed to fetch available slots:', err);
@@ -46,11 +48,10 @@ export function ReservationForm({ onClose, onSuccess }: ReservationFormProps) {
     
     for (let i = 0; i < 3; i++) {
       const date = today.add({ days: i });
-      const dateString = date.toString();
-      const label = i === 0 ? '今日' : i === 1 ? '明日' : `${date.month}月${date.day}日`;
+      const label = i === 0 ? '今日' : i === 1 ? '明日' : `明後日`;
       
       dates.push({
-        value: dateString,
+        value: date,
         label: `${label} (${date.month}/${date.day})`
       });
     }
@@ -61,10 +62,10 @@ export function ReservationForm({ onClose, onSuccess }: ReservationFormProps) {
   const getAvailableStartTimes = () => {
     if (!selectedDate) return [];
     
-    const times: { value: string; label: string; available: boolean }[] = [];
+    const times: { value: Temporal.PlainTime; label: string; available: boolean }[] = [];
     const selectedPlainDate = Temporal.PlainDate.from(selectedDate);
-    const now = Temporal.Now.plainDateTimeISO();
-    const today = Temporal.Now.plainDateISO();
+    const now = Temporal.Now.plainDateTimeISO('Asia/Tokyo');
+    const today = Temporal.Now.plainDateISO('Asia/Tokyo');
     
     // Filter slots for the selected date
     const slotsForDate = availableSlots.filter(slot => {
@@ -84,14 +85,13 @@ export function ReservationForm({ onClose, onSuccess }: ReservationFormProps) {
         
         // Convert to instant for API compatibility
         const instant = timeOnDate.toZonedDateTime('Asia/Tokyo').toInstant();
-        const timeString = instant.toString();
         const slot = slotsForDate.find(s => s.startTime.equals(instant));
         const available = slot ? slot.available : false;
         
         // Only include slots that were returned by the API (within the 72-hour window)
         if (slot) {
           times.push({
-            value: timeString,
+            value: timeOnDate.toPlainTime(),
             label: `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`,
             available
           });
@@ -108,13 +108,18 @@ export function ReservationForm({ onClose, onSuccess }: ReservationFormProps) {
     setLoading(true);
 
     try {
-      const startInstant = Temporal.Instant.from(startTime);
-      const endInstant = startInstant.add({ minutes: duration });
+      if (!selectedDate || !selectedStartTime) {
+        setError('開始時刻を選択してください');
+        return
+      }
 
+      const startInstant = selectedDate
+        .toPlainDateTime(selectedStartTime)
+        .toZonedDateTime('Asia/Tokyo').toInstant(); 
       await reservationsApi.createReservation({
         djName,
         startTime: startInstant,
-        endTime: endInstant,
+        endTime: startInstant.add({ minutes: duration }),
         passcode
       });
 
@@ -141,6 +146,8 @@ export function ReservationForm({ onClose, onSuccess }: ReservationFormProps) {
   const dateOptions = getDateOptions();
   const startTimes = getAvailableStartTimes();
 
+  console.log(selectedStartTime)
+
   return (
     <div className="reservation-form-overlay" onClick={onClose}>
       <div className="reservation-form" onClick={(e) => e.stopPropagation()}>
@@ -163,16 +170,16 @@ export function ReservationForm({ onClose, onSuccess }: ReservationFormProps) {
             <label htmlFor="selectedDate">日付</label>
             <select
               id="selectedDate"
-              value={selectedDate}
+              value={selectedDate?.toString() || ''}
               onChange={(e) => {
-                setSelectedDate(e.target.value);
-                setStartTime(''); // Reset start time when date changes
+                setSelectedDate(Temporal.PlainDate.from(e.target.value));
+                setSelectedStartTime(undefined); // Reset start time when date changes
               }}
               required
             >
               <option value="">日付を選択</option>
               {dateOptions.map(({ value, label }) => (
-                <option key={value} value={value}>
+                <option key={value.toString()} value={value.toString()}>
                   {label}
                 </option>
               ))}
@@ -183,14 +190,16 @@ export function ReservationForm({ onClose, onSuccess }: ReservationFormProps) {
             <label htmlFor="startTime">開始時刻</label>
             <select
               id="startTime"
-              value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
+              value={selectedStartTime?.toString()}
+              onChange={(e) => {
+                setSelectedStartTime(Temporal.PlainTime.from(e.target.value))
+              }}
               required
               disabled={!selectedDate}
             >
               <option value="">時刻を選択</option>
               {startTimes.map(({ value, label, available }) => (
-                <option key={value} value={value} disabled={!available}>
+                <option key={value.toString()} value={value.toString()} disabled={!available}>
                   {label} {!available && '(予約済み)'}
                 </option>
               ))}
@@ -234,7 +243,7 @@ export function ReservationForm({ onClose, onSuccess }: ReservationFormProps) {
             <button type="button" onClick={onClose} disabled={loading}>
               キャンセル
             </button>
-            <button type="submit" disabled={loading || !djName || !startTime || passcode.length !== 4}>
+            <button type="submit" disabled={loading || !djName || !selectedStartTime || !selectedDate || passcode.length !== 4}>
               {loading ? '登録中...' : '予約する'}
             </button>
           </div>

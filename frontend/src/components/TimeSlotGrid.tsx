@@ -6,7 +6,7 @@ import type { TimeSlot, Reservation } from '../types/api';
 interface TimeSlotGridProps {
   date: Temporal.PlainDate;
   reservations: Reservation[];
-  onSlotClick: () => void;
+  onSlotClick: (dateTime: Temporal.Instant) => void;
 }
 
 export function TimeSlotGrid({ date, reservations, onSlotClick }: TimeSlotGridProps) {
@@ -60,7 +60,7 @@ export function TimeSlotGrid({ date, reservations, onSlotClick }: TimeSlotGridPr
           <div
             key={`${hour}-${minute}`}
             className={`time-slot ${isAvailable ? 'available' : ''} ${reservation ? 'reserved' : ''} ${isPast ? 'past' : ''}`}
-            onClick={() => isAvailable && onSlotClick()}
+            onClick={() => isAvailable && onSlotClick(slotInstant)}
           >
             <div className="slot-time">{hour.toString().padStart(2, '0')}:{minute.toString().padStart(2, '0')}</div>
             {reservation && (
