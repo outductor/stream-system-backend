@@ -7,8 +7,10 @@ import { TimeSlotGrid } from '../components/TimeSlotGrid';
 import { ReservationForm } from '../components/ReservationForm';
 import { DeleteConfirmDialog } from '../components/DeleteConfirmDialog';
 
+type DateSelection = 'any' | 'today' | 'tomorrow' | 'dayAfterTomorrow';
+
 export function Timetable() {
-  const [selectedDate, setSelectedDate] = useState<string>('');
+  const [selectedDate, setSelectedDate] = useState<DateSelection>('any');
   const [showReservationForm, setShowReservationForm] = useState(false);
   const [showSlotGrid, setShowSlotGrid] = useState(false);
   const [deleteReservation, setDeleteReservation] = useState<Reservation | null>(null);
@@ -18,10 +20,7 @@ export function Timetable() {
     return dateString.toZonedDateTimeISO('Asia/Tokyo').toPlainTime().toString({ smallestUnit: 'minute' });
   };
 
-  const formatDateHeader = (dateString: string) => {
-    const instant = Temporal.Instant.from(dateString + "T00:00:00Z");
-    const zonedDateTime = instant.toZonedDateTimeISO('Asia/Tokyo');
-    const date = zonedDateTime.toPlainDate();
+  const formatDateHeader = (date: Temporal.PlainDate) => {
     const today = Temporal.Now.plainDateISO('Asia/Tokyo');
     const tomorrow = today.add({ days: 1 });
     
@@ -37,12 +36,12 @@ export function Timetable() {
   };
 
   const groupReservationsByDate = (reservationList: Reservation[]) => {
-    const grouped = new Map<string, Reservation[]>();
+    const grouped = new Map<Temporal.PlainDate, Reservation[]>();
     
     reservationList.forEach(reservation => {
       const instant = Temporal.Instant.from(reservation.startTime);
       const zonedDateTime = instant.toZonedDateTimeISO('Asia/Tokyo');
-      const dateKey = zonedDateTime.toPlainDate().toString();
+      const dateKey = zonedDateTime.toPlainDate();
       
       if (!grouped.has(dateKey)) {
         grouped.set(dateKey, []);
@@ -50,7 +49,7 @@ export function Timetable() {
       grouped.get(dateKey)!.push(reservation);
     });
 
-    return Array.from(grouped.entries()).sort(([a], [b]) => a.localeCompare(b));
+    return Array.from(grouped.entries()).sort(([a], [b]) => Temporal.PlainDate.compare(a, b));
   };
 
   if (loading) {
@@ -70,8 +69,16 @@ export function Timetable() {
   }
 
   const groupedReservations = groupReservationsByDate(reservations);
-  const today = Temporal.Now.plainDateISO('Asia/Tokyo').toString();
-  const tomorrow = Temporal.Now.plainDateISO('Asia/Tokyo').add({ days: 1 }).toString();
+
+  const today = Temporal.Now.plainDateISO('Asia/Tokyo');
+  const tomorrow = today.add({ days: 1 });
+  const dayAfterTomorrow = today.add({ days: 2 });
+
+  const daysSelected =
+    selectedDate === 'any' ? [today, tomorrow, dayAfterTomorrow] :
+    selectedDate === 'today' ? [today] :
+    selectedDate === 'tomorrow' ? [tomorrow] :
+    selectedDate === 'dayAfterTomorrow' ? [dayAfterTomorrow] : [];
 
   const handleReservationSuccess = () => {
     setShowReservationForm(false);
@@ -97,22 +104,28 @@ export function Timetable() {
       <div className="controls-section">
         <div className="date-filters">
           <button 
-            className={selectedDate === '' ? 'active' : ''}
-            onClick={() => setSelectedDate('')}
+            className={selectedDate === 'any' ? 'active' : ''}
+            onClick={() => setSelectedDate('any')}
           >
-            今日・明日
+            すべて
           </button>
           <button 
-            className={selectedDate === today ? 'active' : ''}
-            onClick={() => setSelectedDate(today)}
+            className={selectedDate === 'today' ? 'active' : ''}
+            onClick={() => setSelectedDate('today')}
           >
             今日のみ
           </button>
           <button 
-            className={selectedDate === tomorrow ? 'active' : ''}
-            onClick={() => setSelectedDate(tomorrow)}
+            className={selectedDate === 'tomorrow' ? 'active' : ''}
+            onClick={() => setSelectedDate('tomorrow')}
           >
             明日のみ
+          </button>
+          <button 
+            className={selectedDate === 'dayAfterTomorrow' ? 'active' : ''}
+            onClick={() => setSelectedDate('dayAfterTomorrow')}
+          >
+            明後日のみ
           </button>
         </div>
         
@@ -141,7 +154,7 @@ export function Timetable() {
       ) : (
         <div className="reservations-list">
           {groupedReservations.map(([date, dateReservations]) => (
-            <div key={date} className="date-group">
+            <div key={date.toString()} className="date-group">
               <h2 className="date-header">{formatDateHeader(date)}</h2>
               <div className="reservation-items">
                 {dateReservations
@@ -171,17 +184,14 @@ export function Timetable() {
       {showSlotGrid && (
         <div className="slot-grid-section">
           <h2>空き時間状況</h2>
-          {(selectedDate === '' ? [today, tomorrow] : [selectedDate]).map(date => (
-            <div key={date} className="date-slots">
+          {daysSelected.map(date => (
+            <div key={date.toString()} className="date-slots">
               <h3>{formatDateHeader(date)}</h3>
               <TimeSlotGrid 
                 date={date} 
-                reservations={reservations.filter(r => {
-                  const instant = Temporal.Instant.from(r.startTime);
-                  const zonedDateTime = instant.toZonedDateTimeISO('Asia/Tokyo');
-                  const dateKey = zonedDateTime.toPlainDate().toString();
-                  return dateKey === date;
-                })}
+                reservations={reservations.filter(r =>
+                  r.startTime.toZonedDateTimeISO('Asia/Tokyo').toPlainDate().equals(date)
+                )}
                 onSlotClick={handleSlotClick}
               />
             </div>

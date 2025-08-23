@@ -4,7 +4,7 @@ import { reservationsApi } from '../api/client';
 import type { TimeSlot, Reservation } from '../types/api';
 
 interface TimeSlotGridProps {
-  date: string;
+  date: Temporal.PlainDate;
   reservations: Reservation[];
   onSlotClick: () => void;
 }
@@ -17,12 +17,11 @@ export function TimeSlotGrid({ date, reservations, onSlotClick }: TimeSlotGridPr
     const fetchSlots = async () => {
       try {
         // Create start time from the beginning of the specified date
-        const plainDate = Temporal.PlainDate.from(date);
-        const startOfDate = plainDate.toPlainDateTime({ hour: 0, minute: 0 });
+        const startOfDate = date.toPlainDateTime({ hour: 0, minute: 0 });
         const startTime = startOfDate.toZonedDateTime('Asia/Tokyo').toInstant();
         
         // Create end time for the end of the specified date
-        const endOfDate = plainDate.toPlainDateTime({ hour: 23, minute: 59, second: 59, millisecond: 999 });
+        const endOfDate = date.toPlainDateTime({ hour: 23, minute: 59, second: 59, millisecond: 999 });
         const endTime = endOfDate.toZonedDateTime('Asia/Tokyo').toInstant();
 
         const slots = await reservationsApi.getAvailableSlots(startTime, endTime);
