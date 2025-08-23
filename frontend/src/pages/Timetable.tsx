@@ -36,12 +36,12 @@ export function Timetable() {
   };
 
   const groupReservationsByDate = (reservationList: Reservation[]) => {
-    const grouped = new Map<Temporal.PlainDate, Reservation[]>();
+    const grouped = new Map<string /* Temporal.PlainDate */, Reservation[]>();
     
     reservationList.forEach(reservation => {
       const instant = Temporal.Instant.from(reservation.startTime);
       const zonedDateTime = instant.toZonedDateTimeISO('Asia/Tokyo');
-      const dateKey = zonedDateTime.toPlainDate();
+      const dateKey = zonedDateTime.toPlainDate().toString();
       
       if (!grouped.has(dateKey)) {
         grouped.set(dateKey, []);
@@ -49,7 +49,11 @@ export function Timetable() {
       grouped.get(dateKey)!.push(reservation);
     });
 
-    return Array.from(grouped.entries()).sort(([a], [b]) => Temporal.PlainDate.compare(a, b));
+    return (
+      Array.from(grouped.entries())
+        .map(([date, res]) => [Temporal.PlainDate.from(date), res] as const)
+        .sort(([a], [b]) => Temporal.PlainDate.compare(a, b))
+    );
   };
 
   if (loading) {
