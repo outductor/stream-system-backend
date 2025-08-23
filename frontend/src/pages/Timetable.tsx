@@ -14,10 +14,8 @@ export function Timetable() {
   const [deleteReservation, setDeleteReservation] = useState<Reservation | null>(null);
   const { reservations, loading, error } = useReservations(selectedDate);
 
-  const formatDateTime = (dateString: string) => {
-    const instant = Temporal.Instant.from(dateString);
-    const zonedDateTime = instant.toZonedDateTimeISO('Asia/Tokyo');
-    return zonedDateTime.toPlainTime().toString({ smallestUnit: 'minute' });
+  const formatDateTime = (dateString: Temporal.Instant) => {
+    return dateString.toZonedDateTimeISO('Asia/Tokyo').toPlainTime().toString({ smallestUnit: 'minute' });
   };
 
   const formatDateHeader = (dateString: string) => {
@@ -147,7 +145,7 @@ export function Timetable() {
               <h2 className="date-header">{formatDateHeader(date)}</h2>
               <div className="reservation-items">
                 {dateReservations
-                  .sort((a, b) => a.startTime.localeCompare(b.startTime))
+                  .sort((a, b) => Temporal.Instant.compare(a.startTime, b.startTime))
                   .map(reservation => (
                     <div key={reservation.id} className="reservation-item">
                       <div className="reservation-content">

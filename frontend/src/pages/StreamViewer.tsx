@@ -31,8 +31,8 @@ export function StreamViewer() {
     );
   }
 
-  const formatTime = (dateString: string) => {
-    return Temporal.Instant.from(dateString).toZonedDateTimeISO('Asia/Tokyo').toPlainTime().toString({ smallestUnit: 'minute' });
+  const formatTime = (dateString: Temporal.Instant) => {
+    return dateString.toZonedDateTimeISO('Asia/Tokyo').toPlainTime().toString({ smallestUnit: 'minute' });
   };
 
   return (

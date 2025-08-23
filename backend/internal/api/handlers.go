@@ -195,13 +195,6 @@ func (h *Handler) GetAvailableSlots(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Ensure startTime is not in the past (with some tolerance for clock skew)
-	now := time.Now().UTC()
-	if startTime.Before(now.Add(-1 * time.Minute)) {
-		h.sendError(w, http.StatusBadRequest, "INVALID_TIME_RANGE", "startTime cannot be in the past")
-		return
-	}
-
 	slots, err := h.db.GetAvailableSlotsInRange(startTime, endTime)
 	if err != nil {
 		h.logger.Errorf("Failed to get available slots: %v", err)

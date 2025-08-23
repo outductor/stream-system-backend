@@ -29,9 +29,8 @@ export function ReservationForm({ onClose, onSuccess }: ReservationFormProps) {
     const fetchAvailableSlots = async () => {
       try {
         const now = Temporal.Now.instant();
-        const startTime = now.toString();
         // endTime will be automatically set to 72 hours from now by the backend
-        const slots = await reservationsApi.getAvailableSlots(startTime);
+        const slots = await reservationsApi.getAvailableSlots(now);
         setAvailableSlots(slots);
       } catch (err) {
         console.error('Failed to fetch available slots:', err);
@@ -69,9 +68,7 @@ export function ReservationForm({ onClose, onSuccess }: ReservationFormProps) {
     
     // Filter slots for the selected date
     const slotsForDate = availableSlots.filter(slot => {
-      const slotInstant = Temporal.Instant.from(slot.startTime);
-      const slotDateTime = slotInstant.toZonedDateTimeISO('UTC').toPlainDateTime();
-      const slotDate = slotDateTime.toPlainDate();
+      const slotDate = slot.startTime.toZonedDateTimeISO('Asia/Tokyo').toPlainDate();
       return slotDate.equals(selectedPlainDate);
     });
     
@@ -86,9 +83,9 @@ export function ReservationForm({ onClose, onSuccess }: ReservationFormProps) {
         }
         
         // Convert to instant for API compatibility
-        const instant = timeOnDate.toZonedDateTime('UTC').toInstant();
+        const instant = timeOnDate.toZonedDateTime('Asia/Tokyo').toInstant();
         const timeString = instant.toString();
-        const slot = slotsForDate.find(s => s.startTime === timeString);
+        const slot = slotsForDate.find(s => s.startTime.equals(instant));
         const available = slot ? slot.available : false;
         
         // Only include slots that were returned by the API (within the 72-hour window)
@@ -113,12 +110,11 @@ export function ReservationForm({ onClose, onSuccess }: ReservationFormProps) {
     try {
       const startInstant = Temporal.Instant.from(startTime);
       const endInstant = startInstant.add({ minutes: duration });
-      const endTime = endInstant.toString();
 
       await reservationsApi.createReservation({
         djName,
-        startTime,
-        endTime,
+        startTime: startInstant,
+        endTime: endInstant,
         passcode
       });
 

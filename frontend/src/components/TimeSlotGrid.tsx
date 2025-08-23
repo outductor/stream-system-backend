@@ -19,12 +19,12 @@ export function TimeSlotGrid({ date, reservations, onSlotClick }: TimeSlotGridPr
         // Create start time from the beginning of the specified date
         const plainDate = Temporal.PlainDate.from(date);
         const startOfDate = plainDate.toPlainDateTime({ hour: 0, minute: 0 });
-        const startTime = startOfDate.toZonedDateTime('UTC').toInstant().toString();
+        const startTime = startOfDate.toZonedDateTime('Asia/Tokyo').toInstant();
         
         // Create end time for the end of the specified date
         const endOfDate = plainDate.toPlainDateTime({ hour: 23, minute: 59, second: 59, millisecond: 999 });
-        const endTime = endOfDate.toZonedDateTime('UTC').toInstant().toString();
-        
+        const endTime = endOfDate.toZonedDateTime('Asia/Tokyo').toInstant();
+
         const slots = await reservationsApi.getAvailableSlots(startTime, endTime);
         setAvailableSlots(slots);
       } catch (err) {
@@ -36,13 +36,9 @@ export function TimeSlotGrid({ date, reservations, onSlotClick }: TimeSlotGridPr
     fetchSlots();
   }, [date, reservations]);
 
-  const getReservationForSlot = (slot: TimeSlot): Reservation | undefined => {
-    return reservations.find(r => {
-      const resStart = Temporal.Instant.from(r.startTime);
-      const slotStart = Temporal.Instant.from(slot.startTime);
-      return resStart.equals(slotStart);
-    });
-  };
+  const findReservationForSlot =
+    (slot: TimeSlot): Reservation | undefined =>
+      reservations.find(r => r.startTime.equals(slot.startTime));
 
   const generateTimeSlots = () => {
     const slots: React.ReactElement[] = [];
@@ -54,11 +50,10 @@ export function TimeSlotGrid({ date, reservations, onSlotClick }: TimeSlotGridPr
       
       for (const minute of [0, 15, 30, 45]) {
         const slotTime = plainDate.toPlainDateTime({ hour, minute });
-        const slotInstant = slotTime.toZonedDateTime('UTC').toInstant();
-        const timeString = slotInstant.toString();
+        const slotInstant = slotTime.toZonedDateTime('Asia/Tokyo').toInstant();
         
-        const slot = availableSlots.find(s => s.startTime === timeString);
-        const reservation = slot ? getReservationForSlot(slot) : undefined;
+        const slot = availableSlots.find(s => s.startTime.equals(slotInstant));
+        const reservation = slot ? findReservationForSlot(slot) : undefined;
         const isPast = Temporal.Instant.compare(slotInstant, now) <= 0;
         const isAvailable = slot?.available && !isPast;
 

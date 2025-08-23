@@ -1,32 +1,63 @@
+import { Temporal } from "temporal-polyfill";
+
 export interface StreamStatus {
   isLive: boolean;
   currentDj?: string;
   nextDj?: string;
-  currentStartTime?: string;
-  currentEndTime?: string;
-  nextStartTime?: string;
+  currentStartTime?: Temporal.Instant;
+  currentEndTime?: Temporal.Instant;
+  nextStartTime?: Temporal.Instant;
 }
+
+export const buildStreamStatus = (plainData: any): StreamStatus => {
+  return {
+    isLive: plainData.isLive,
+    currentDj: plainData.currentDj,
+    nextDj: plainData.nextDj,
+    currentStartTime: plainData.currentStartTime ? Temporal.Instant.from(plainData.currentStartTime) : undefined,
+    currentEndTime: plainData.currentEndTime ? Temporal.Instant.from(plainData.currentEndTime) : undefined,
+    nextStartTime: plainData.nextStartTime ? Temporal.Instant.from(plainData.nextStartTime) : undefined
+  };
+};
 
 export interface Reservation {
   id: string;
   djName: string;
-  startTime: string;
-  endTime: string;
-  createdAt: string;
+  startTime: Temporal.Instant;
+  endTime: Temporal.Instant;
+  createdAt: Temporal.Instant;
 }
+
+export const buildReservation = (plainData: any): Reservation => {
+  return {
+    id: plainData.id,
+    djName: plainData.djName,
+    startTime: Temporal.Instant.from(plainData.startTime),
+    endTime: Temporal.Instant.from(plainData.endTime),
+    createdAt: Temporal.Instant.from(plainData.createdAt),
+  };
+};
 
 export interface CreateReservationRequest {
   djName: string;
-  startTime: string;
-  endTime: string;
+  startTime: Temporal.Instant;
+  endTime: Temporal.Instant;
   passcode: string;
 }
 
 export interface TimeSlot {
-  startTime: string;
-  endTime: string;
+  startTime: Temporal.Instant;
+  endTime: Temporal.Instant;
   available: boolean;
 }
+
+export const buildTimeSlot = (plainData: any): TimeSlot => {
+  return {
+    startTime: Temporal.Instant.from(plainData.startTime),
+    endTime: Temporal.Instant.from(plainData.endTime),
+    available: plainData.available,
+  };
+};
 
 export interface ApiError {
   code: 'TIME_CONFLICT' | 'PAST_TIME' | 'INVALID_TIME_INTERVAL' | 'DURATION_TOO_LONG' | 'INVALID_PASSCODE';
