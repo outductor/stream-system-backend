@@ -171,7 +171,7 @@ export function Timetable() {
                         className="delete-button"
                         onClick={() => setDeleteReservation(reservation)}
                       >
-                        削除
+                        予約取消
                       </button>
                     </div>
                   ))}
