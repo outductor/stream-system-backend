@@ -117,21 +117,23 @@
 
 .date-filters button {
   padding: 0.5rem 1rem;
-  border: 1px solid #333;
-  background-color: transparent;
-  color: #fff;
+  border: 1px solid #666;
+  background-color: rgba(100, 108, 255, 0.1);
+  color: inherit;
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.3s;
 }
 
 .date-filters button:hover {
-  background-color: #333;
+  background-color: rgba(100, 108, 255, 0.2);
+  border-color: #646cff;
 }
 
 .date-filters button.active {
   background-color: #646cff;
   border-color: #646cff;
+  color: #fff;
 }
 
 .reservations-list {
@@ -192,6 +194,64 @@
   color: #ff4444;
 }
 
+.guerrilla-stream {
+  padding: 1.5rem;
+  background-color: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  margin: 1rem 0;
+  text-align: center;
+}
+
+.guerrilla-stream h2 {
+  color: #ffc107;
+  margin: 0 0 0.5rem 0;
+  font-size: 1.2rem;
+}
+
+.guerrilla-stream .guerrilla-note {
+  color: #888;
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.current-dj.offline {
+  opacity: 0.7;
+}
+
+.offline-notice {
+  padding: 1rem;
+  background-color: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  margin: 0.5rem 0;
+  text-align: center;
+}
+
+.offline-notice p {
+  color: #ffc107;
+  margin: 0;
+  font-weight: 500;
+}
+
+.no-stream {
+  padding: 1.5rem;
+  background-color: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  margin: 1rem 0;
+  text-align: center;
+}
+
+.no-stream p {
+  margin: 0.5rem 0;
+  color: #888;
+}
+
+.no-stream .chance-message {
+  color: #4CAF50;
+  font-weight: 500;
+  font-size: 1.1rem;
+  margin-top: 1rem;
+}
+
 /* Timetable header */
 .timetable-header {
   display: flex;
@@ -204,7 +264,8 @@
 /* Current time display */
 .current-time {
   font-size: 1rem;
-  color: #999;
+  color: inherit;
+  opacity: 0.7;
 }
 
 .time-label {
@@ -213,7 +274,8 @@
 
 .time-value {
   font-weight: bold;
-  color: #fff;
+  color: inherit;
+  opacity: 1;
 }
 
 /* Controls section */
@@ -329,9 +391,10 @@
 }
 
 .time-slot-grid {
-  background-color: #1a1a1a;
+  background-color: rgba(0, 0, 0, 0.05);
   padding: 1rem;
   border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 .grid-legend {
@@ -339,6 +402,8 @@
   gap: 1.5rem;
   margin-bottom: 1rem;
   font-size: 0.9rem;
+  color: inherit;
+  font-weight: 500;
 }
 
 .legend-item {
@@ -352,19 +417,23 @@
   width: 20px;
   height: 20px;
   border-radius: 4px;
-  border: 1px solid #333;
+  border: 2px solid currentColor;
+  opacity: 0.8;
 }
 
 .legend-item.available::before {
   background-color: #4caf50;
+  border-color: #4caf50;
 }
 
 .legend-item.reserved::before {
   background-color: #ff9800;
+  border-color: #ff9800;
 }
 
 .legend-item.past::before {
   background-color: #666;
+  border-color: #666;
 }
 
 .slots-container {

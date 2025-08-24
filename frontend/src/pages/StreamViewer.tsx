@@ -44,7 +44,8 @@ export function StreamViewer() {
           {status.isLive ? '● LIVE' : '● OFFLINE'}
         </div>
         
-        {status.currentDj && (
+        {/* Case 1: 配信枠あり＆配信中 */}
+        {status.currentDj && status.isLive && (
           <div className="current-dj">
             <h2>現在のDJ: {status.currentDj}</h2>
             {status.currentStartTime && status.currentEndTime && (
@@ -55,6 +56,40 @@ export function StreamViewer() {
           </div>
         )}
         
+        {/* Case 2: 配信枠なし＆配信中（ゲリラ配信） */}
+        {!status.currentDj && status.isLive && (
+          <div className="guerrilla-stream">
+            <h2>配信枠が登録されていません</h2>
+            <p className="guerrilla-note">ゲリラ配信中かも？</p>
+          </div>
+        )}
+        
+        {/* Case 3: 配信枠あり＆配信なし */}
+        {status.currentDj && !status.isLive && (
+          <>
+            <div className="current-dj offline">
+              <h2>現在の配信枠: {status.currentDj}</h2>
+              {status.currentStartTime && status.currentEndTime && (
+                <p className="time-info">
+                  {formatTime(status.currentStartTime)} - {formatTime(status.currentEndTime)}
+                </p>
+              )}
+            </div>
+            <div className="offline-notice">
+              <p>⚠️ ただいまオフライン中です</p>
+            </div>
+          </>
+        )}
+        
+        {/* Case 4: 配信枠なし＆配信なし */}
+        {!status.currentDj && !status.isLive && (
+          <div className="no-stream">
+            <p>ただいまオフライン中です</p>
+            <p className="chance-message">🎯 配信枠獲得のチャンス！</p>
+          </div>
+        )}
+        
+        {/* 次の配信予定 */}
         {status.nextDj && status.nextStartTime && (
           <div className="next-dj">
             <h3>次のDJ: {status.nextDj}</h3>
