@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
 
 interface HLSPlayerProps {
@@ -9,6 +9,7 @@ interface HLSPlayerProps {
 export function HLSPlayer({ src, autoPlay = true }: HLSPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
+  const [showPlayButton, setShowPlayButton] = useState(false);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -29,7 +30,10 @@ export function HLSPlayer({ src, autoPlay = true }: HLSPlayerProps) {
         
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
           if (autoPlay) {
-            video.play().catch(console.error);
+            video.play().catch((error) => {
+              console.log('Autoplay blocked:', error);
+              setShowPlayButton(true);
+            });
           }
         });
 
@@ -54,7 +58,10 @@ export function HLSPlayer({ src, autoPlay = true }: HLSPlayerProps) {
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
         video.src = src;
         if (autoPlay) {
-          video.play().catch(console.error);
+          video.play().catch((error) => {
+            console.log('Autoplay blocked:', error);
+            setShowPlayButton(true);
+          });
         }
       }
     };
@@ -69,12 +76,52 @@ export function HLSPlayer({ src, autoPlay = true }: HLSPlayerProps) {
     };
   }, [src, autoPlay]);
 
+  const handlePlayClick = () => {
+    if (videoRef.current) {
+      videoRef.current.play();
+      setShowPlayButton(false);
+    }
+  };
+
   return (
-    <video
-      ref={videoRef}
-      controls
-      className="hls-player"
-      style={{ width: '100%', maxWidth: '100%' }}
-    />
+    <div style={{ position: 'relative', width: '100%' }}>
+      <video
+        ref={videoRef}
+        controls
+        muted={autoPlay}
+        className="hls-player"
+        style={{ width: '100%', maxWidth: '100%' }}
+      />
+      {showPlayButton && (
+        <div 
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            background: 'rgba(0, 0, 0, 0.7)',
+            borderRadius: '50%',
+            width: '80px',
+            height: '80px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+          }}
+          onClick={handlePlayClick}
+        >
+          <div 
+            style={{
+              width: 0,
+              height: 0,
+              borderLeft: '30px solid white',
+              borderTop: '20px solid transparent',
+              borderBottom: '20px solid transparent',
+              marginLeft: '8px',
+            }}
+          />
+        </div>
+      )}
+    </div>
   );
 }

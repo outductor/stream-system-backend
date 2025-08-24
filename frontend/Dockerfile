@@ -1,26 +1,25 @@
+# syntax=docker/dockerfile:1
+
 # Build stage
-FROM node:20-alpine as builder
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
-
-# Install dependencies
-RUN npm ci
-
-# Copy source code
-COPY . .
-
 # Accept build arguments
 ARG VITE_API_BASE_URL
-ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
-
 ARG VITE_HLS_ENDPOINT
-ENV VITE_HLS_ENDPOINT=$VITE_HLS_ENDPOINT
 
-# Build the application
-RUN npm run build
+# Copy package files and install dependencies
+COPY package*.json ./
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci
+
+# Copy source code and build
+COPY . .
+RUN --mount=type=cache,target=/root/.npm \
+    VITE_API_BASE_URL=${VITE_API_BASE_URL} \
+    VITE_HLS_ENDPOINT=${VITE_HLS_ENDPOINT} \
+    npm run build
 
 # Production stage
 FROM nginx:alpine

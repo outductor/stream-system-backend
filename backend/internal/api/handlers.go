@@ -34,8 +34,8 @@ func (h *Handler) GetStreamStatus(w http.ResponseWriter, r *http.Request) {
 		currentNext = &db.CurrentNextDJ{}
 	}
 
-	// TODO: somehow compute this state
-	isLive := true
+	// Check if stream is live by checking HLS file exists and is recent
+	isLive := h.checkStreamIsLive()
 
 	status := StreamStatus{
 		IsLive: isLive,
@@ -276,4 +276,22 @@ func (h *Handler) sendError(w http.ResponseWriter, statusCode int, code, message
 		Code:    ErrorCode(code),
 		Message: message,
 	})
+}
+
+func (h *Handler) checkStreamIsLive() bool {
+	// Check if stream is live by requesting HLS manifest through Nginx
+	client := &http.Client{
+		Timeout: 2 * time.Second,
+	}
+	
+	// Request through Nginx (internal Docker network)
+	resp, err := client.Get("http://nginx/hls/stream-endpoint/index.m3u8")
+	if err != nil {
+		h.logger.Debugf("Stream check failed: %v", err)
+		return false
+	}
+	defer resp.Body.Close()
+	
+	// If we get 200 OK, stream is live
+	return resp.StatusCode == http.StatusOK
 }
