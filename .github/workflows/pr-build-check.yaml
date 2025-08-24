@@ -11,72 +11,6 @@ on:
       - '.github/workflows/**'
 
 jobs:
-  docker-build-backend:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      
-      - name: Build backend Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./backend
-          push: false
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          platforms: linux/amd64
-
-  docker-build-frontend:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      
-      - name: Build frontend Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./frontend
-          push: false
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          platforms: linux/amd64
-          build-args: |
-            VITE_API_BASE_URL=/api/v1
-            VITE_HLS_ENDPOINT=/hls/stream-endpoint/index.m3u8
-
-  docker-build-mediamtx:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      
-      - name: Create override file if not exists
-        run: |
-          if [ ! -f "./mediamtx/mediamtx.override.yml" ]; then
-            echo "# MediaMTX override configuration" > ./mediamtx/mediamtx.override.yml
-            echo "paths:" >> ./mediamtx/mediamtx.override.yml
-            echo "  stream-endpoint:" >> ./mediamtx/mediamtx.override.yml
-            echo "    source: rtmp://localhost:1935/stream-endpoint" >> ./mediamtx/mediamtx.override.yml
-          fi
-      
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      
-      - name: Build MediaMTX Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./mediamtx
-          push: false
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          platforms: linux/amd64
-
   test-codegen-backend:
     runs-on: ubuntu-latest
     steps:
@@ -142,19 +76,9 @@ jobs:
 
   integration-test:
     runs-on: ubuntu-latest
-    needs: [docker-build-backend, docker-build-frontend, docker-build-mediamtx]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      
-      - name: Create override file if not exists
-        run: |
-          if [ ! -f "./mediamtx/mediamtx.override.yml" ]; then
-            echo "# MediaMTX override configuration" > ./mediamtx/mediamtx.override.yml
-            echo "paths:" >> ./mediamtx/mediamtx.override.yml
-            echo "  stream-endpoint:" >> ./mediamtx/mediamtx.override.yml
-            echo "    source: rtmp://localhost:1935/stream-endpoint" >> ./mediamtx/mediamtx.override.yml
-          fi
       
       - name: Create .env file for CI
         run: |
