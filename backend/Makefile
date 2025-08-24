@@ -12,7 +12,7 @@ build:
 
 # Generate API code from OpenAPI spec
 generate-api:
-	oapi-codegen -package api -generate types,server,spec ../api/openapi.yaml > internal/api/generated.go
+	go tool oapi-codegen -config oapi-codegen.yaml ../api/openapi.yaml > internal/api/generated.go
 
 # Run the application
 run: build
@@ -48,5 +48,5 @@ dev:
 # Install dependencies
 deps:
 	go mod download
-	go install github.com/deepmap/oapi-codegen/cmd/oapi-codegen@latest
+	go get -tool github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
 	go install github.com/cosmtrek/air@latest
