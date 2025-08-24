@@ -1,35 +1,35 @@
-# DJ Event Streaming System Backend
+# DJ Event Streaming System
 
-DJイベント配信システムのバックエンドサーバー。RTMPストリーム受信、HLS配信、タイムテーブル管理機能を提供します。
+DJイベント配信システム - ライブストリーミングとタイムテーブル管理のための全機能Webアプリケーション。
 
 ## 機能
 
-- **RTMP配信受信**: DJブースからのライブストリームを受信
-- **HLS配信**: ブラウザで視聴可能な形式に変換して配信
-- **タイムテーブル管理**: 予約の作成・削除・閲覧
-- **自動タイトル切り替え**: 時間に合わせて現在のDJ名を自動表示
+- **ライブストリーミング**: RTMP経由でのライブストリーム受信とHLS配信
+- **Webインターフェース**: リアルタイムでのストリーム視聴とタイムテーブル管理
+- **タイムテーブル管理**: 予約の作成・削除・閲覧（15分単位、最大1時間枠）
+- **自動ステータス表示**: 現在のDJ名とスケジュールの自動更新
+- **パスコード認証**: 4桁パスコードによる予約削除保護
 
-## 技術スタック
+## アーキテクチャ
 
-- **言語**: Go 1.24
+- **フロントエンド**: React 19 + TypeScript + Vite
+- **バックエンド**: Go 1.24 + Echo Framework
+- **ストリーミング**: MediaMTX (RTMP → HLS変換)
 - **データベース**: PostgreSQL 17
-- **ストリーミング**: RTMP (joy4), HLS (FFmpeg)
-- **API**: OpenAPI 3.0によるスキーマ定義とコード生成
-- **Webフレームワーク**: Chi
+- **リバースプロキシ**: Nginx
+- **API**: OpenAPI 3.0によるスキーマファースト開発
+- **コンテナ化**: Docker + Docker Compose
 
 ## クイックスタート
 
-### Dockerを使用した起動（推奨）
+### Docker Composeを使用した起動（推奨）
 
 ```bash
 # リポジトリのクローン
 git clone <repository-url>
 cd stream-system-backend
 
-# 環境変数ファイルの作成
-cp .env.example .env
-
-# Docker Composeで起動
+# Docker Composeで全サービス起動
 docker compose up -d
 
 # ログの確認
@@ -38,55 +38,50 @@ docker compose logs -f
 
 ### アクセス情報
 
-- **API**: http://localhost:18080/api/v1
-- **RTMP配信URL**: rtmp://localhost:11935/live/djevent2024  
-- **HLS視聴URL**: http://localhost:18080/hls/stream.m3u8
-- **PostgreSQL**: localhost:15432 (ユーザー: postgres, パスワード: postgres)
+- **Webアプリケーション**: http://localhost
+- **RTMP配信URL**: rtmp://localhost:19350/stream-endpoint
+  - ユーザー名: `mediamtx-streaming-usr`
+  - パスワード: `mediamtx-streaming-passwd`
+- **HLS視聴URL**: http://localhost/hls/stream-endpoint/index.m3u8
 
-## セットアップ
+## サービス構成
 
-### 必要なソフトウェア
+- **nginx**: リバースプロキシ（ポート80）
+- **frontend**: React Webアプリケーション
+- **backend**: Go API サーバー
+- **mediamtx**: RTMPストリーミングサーバー（ポート19350）
+- **postgres**: データベース
 
-- Go 1.24以上
-- PostgreSQL 17
-- FFmpeg
-- Docker & Docker Compose (オプション)
+## ローカル開発
 
-### ローカル開発
+### フロントエンド開発
 
-1. 依存関係のインストール
 ```bash
+cd frontend
+npm install
+npm run dev  # http://localhost:5173
+```
+
+### バックエンド開発
+
+```bash
+cd backend
 go mod download
-make deps
-```
 
-2. 環境変数の設定
-```bash
-cp .env.example .env
-# .envファイルを編集して適切な値を設定
-```
-
-3. データベースのセットアップ
-```bash
-createdb stream_system
-psql -U postgres -d stream_system -f db/schema.sql
-```
-
-4. APIコードの生成
-```bash
+# APIコードの生成
 make generate-api
-```
 
-5. サーバーの起動
-```bash
+# ローカル実行（PostgreSQLが必要）
 make run
 ```
 
-### Dockerを使用した起動
+### 必要なソフトウェア
 
-```bash
-docker-compose up -d
-```
+- Docker & Docker Compose（推奨）
+- または個別実行の場合：
+  - Node.js 18以上（フロントエンド）
+  - Go 1.24以上（バックエンド）
+  - PostgreSQL 17（データベース）
 
 ## API仕様
 
@@ -94,29 +89,31 @@ APIの詳細仕様は `api/openapi.yaml` を参照してください。
 
 ### 主要エンドポイント
 
-- `GET /api/v1/stream/status` - 配信状態の取得
+- `GET /api/v1/stream/status` - 配信状態とスケジュール情報
 - `GET /api/v1/reservations` - 予約一覧の取得
 - `POST /api/v1/reservations` - 新規予約の作成
-- `DELETE /api/v1/reservations/{id}` - 予約の削除
-- `GET /api/v1/available-slots` - 利用可能時間枠の取得
+- `DELETE /api/v1/reservations/{id}` - 予約の削除（パスコード認証）
+- `GET /api/v1/available-slots` - 指定時間範囲内の利用可能時間枠
 
 ## 配信設定
 
-### RTMPストリーム設定
+### RTMP配信設定
 
-- **サーバー**: `rtmp://localhost:11935/live`
-- **ストリームキー**: 環境変数 `RTMP_STREAM_KEY` で設定（デフォルト: djevent2024）
+- **サーバー**: `rtmp://localhost:19350/stream-endpoint`
+- **認証**:
+  - ユーザー名: `mediamtx-streaming-usr`
+  - パスワード: `mediamtx-streaming-passwd`
 
-### OBS設定例
+### OBS Studio設定例
 
-1. 設定 → 配信
-2. サービス: カスタム
-3. サーバー: `rtmp://localhost:11935/live`
-4. ストリームキー: `djevent2024`
+1. **設定** → **配信**
+2. **サービス**: カスタム
+3. **サーバー**: `rtmp://localhost:19350/stream-endpoint`
+4. **ストリームキー**: `mediamtx-streaming-usr:mediamtx-streaming-passwd`
 
-### HLS視聴URL
-
-- `http://localhost:18080/hls/stream.m3u8`
+または認証情報をサーバーURLに含める場合：
+- **サーバー**: `rtmp://mediamtx-streaming-usr:mediamtx-streaming-passwd@localhost:19350/stream-endpoint`
+- **ストリームキー**: （空欄）
 
 ## テスト動作確認
 
@@ -124,16 +121,16 @@ APIの詳細仕様は `api/openapi.yaml` を参照してください。
 
 ```bash
 # ヘルスチェック
-curl http://localhost:18080/health
+curl http://localhost/health
 
 # ストリーム状態確認
-curl http://localhost:18080/api/v1/stream/status | jq .
+curl http://localhost/api/v1/stream/status | jq .
 
 # 予約一覧取得
-curl http://localhost:18080/api/v1/reservations | jq .
+curl http://localhost/api/v1/reservations | jq .
 
 # 予約作成（絵文字対応）
-curl -X POST http://localhost:18080/api/v1/reservations \
+curl -X POST http://localhost/api/v1/reservations \
   -H "Content-Type: application/json" \
   -d '{
     "djName": "DJ テスト 🎵",
@@ -142,72 +139,112 @@ curl -X POST http://localhost:18080/api/v1/reservations \
     "passcode": "1234"
   }' | jq .
 
-# 利用可能時間枠確認
-curl "http://localhost:18080/api/v1/available-slots?date=$(date +%Y-%m-%d)" | jq .
+# 利用可能時間枠確認（72時間以内）
+curl "http://localhost/api/v1/available-slots?startTime=$(date -u +%Y-%m-%dT%H:%M:%SZ)&endTime=$(date -u -d "+24 hours" +%Y-%m-%dT%H:%M:%SZ)" | jq .
 
 # 予約削除
-curl -X DELETE http://localhost:18080/api/v1/reservations/{reservation-id} \
+curl -X DELETE http://localhost/api/v1/reservations/{reservation-id} \
   -H "Content-Type: application/json" \
   -d '{"passcode": "1234"}'
 ```
 
-## 開発
-
-### コマンド
+### 配信テスト
 
 ```bash
-# ビルド
-make build
+# FFmpegでテスト配信（テスト用動画ファイルが必要）
+ffmpeg -re -i test_video.mp4 -c:v libx264 -c:a aac \
+  -f flv rtmp://mediamtx-streaming-usr:mediamtx-streaming-passwd@localhost:19350/stream-endpoint
 
-# テスト実行
-make test
+# ブラウザで視聴テスト
+open http://localhost/hls/stream-endpoint/index.m3u8
+```
+
+## プロジェクト構造
+
+```
+stream-system-backend/
+├── api/                    # OpenAPI仕様
+│   └── openapi.yaml       # API定義
+├── backend/               # Goバックエンド
+│   ├── cmd/server/        # メインアプリケーション
+│   ├── internal/          # 内部パッケージ
+│   │   ├── api/          # APIハンドラー・生成コード
+│   │   ├── config/       # 設定管理
+│   │   └── db/           # データベース層
+│   ├── db/               # データベーススキーマ
+│   └── Makefile          # ビルドタスク
+├── frontend/             # React Webアプリ
+│   ├── src/
+│   │   ├── components/   # UIコンポーネント
+│   │   ├── pages/        # ページコンポーネント
+│   │   ├── api/          # APIクライアント
+│   │   ├── hooks/        # Reactフック
+│   │   └── types/        # TypeScript型定義
+│   └── package.json
+├── mediamtx/             # ストリーミングサーバー設定
+├── nginx/                # リバースプロキシ設定
+├── compose.yml           # Docker Compose設定
+└── media/               # 生成されるメディアファイル
+```
+
+### 開発コマンド
+
+#### バックエンド（Go）
+```bash
+cd backend
+
+# 依存関係のインストール
+go mod download
 
 # APIコード再生成
 make generate-api
 
-# 開発モード（ホットリロード）
-make dev
+# ビルド
+make build
+
+# ローカル実行
+make run
 ```
 
-### プロジェクト構造
+#### フロントエンド（React）
+```bash
+cd frontend
 
-```
-.
-├── api/              # OpenAPI定義
-├── cmd/server/       # メインアプリケーション
-├── internal/         # 内部パッケージ
-│   ├── api/         # APIハンドラー
-│   ├── config/      # 設定管理
-│   ├── db/          # データベース層
-│   ├── rtmp/        # RTMPサーバー
-│   └── hls/         # HLS変換
-├── db/              # データベーススキーマ
-└── media/           # メディアファイル出力
+# 依存関係のインストール  
+npm install
+
+# 開発サーバー起動
+npm run dev
+
+# プロダクションビルド
+npm run build
+
+# リント実行
+npm run lint
 ```
 
 ## トラブルシューティング
 
-### FFmpegが見つからない
+### ポート競合
+
+デフォルトポート使用状況：
+- **HTTP（Nginx）**: 80
+- **RTMP（MediaMTX）**: 19350  
+
+ポートが使用中の場合、`compose.yml`の`ports`セクションを編集してください。
+
+### コンテナ起動失敗
 
 ```bash
-# Ubuntu/Debian
-sudo apt-get install ffmpeg
+# 既存コンテナとボリュームの削除
+docker compose down -v
 
-# macOS
-brew install ffmpeg
+# イメージの再ビルド
+docker compose build --no-cache
 
-# Alpine Linux
-apk add ffmpeg
+# 再起動
+docker compose up -d
 ```
-
-### ポートが使用中
-
-デフォルトポート:
-- HTTP API: 18080（Docker Compose使用時）
-- RTMP: 11935（Docker Compose使用時）  
-- PostgreSQL: 15432（Docker Compose使用時）
-
-環境変数またはcompose.ymlで変更可能です。
 
 ## ライセンス
 
