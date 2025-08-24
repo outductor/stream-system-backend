@@ -156,12 +156,18 @@ jobs:
             echo "    source: rtmp://localhost:1935/stream-endpoint" >> ./mediamtx/mediamtx.override.yml
           fi
       
+      - name: Create .env file for CI
+        run: |
+          cat > .env << EOF
+          PRODUCTION_DOMAIN=http://localhost
+          DB_PASSWORD=postgres
+          EVENT_START_TIME=$(date '+%Y-%m-%d %H:%M:%S')
+          EVENT_END_TIME=$(date -d '+3 days' '+%Y-%m-%d %H:%M:%S')
+          EVENT_TIMEZONE=UTC
+          EOF
+      
       - name: Start services
         run: |
-          # Set event period for testing (current time to +3 days)
-          export EVENT_START_TIME=$(date '+%Y-%m-%d %H:%M:%S')
-          export EVENT_END_TIME=$(date -d '+3 days' '+%Y-%m-%d %H:%M:%S')
-          export EVENT_TIMEZONE="UTC"
           docker compose up -d
           sleep 10
       
