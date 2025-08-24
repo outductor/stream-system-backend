@@ -20,8 +20,31 @@ export function HLSPlayer({ src, autoPlay = true }: HLSPlayerProps) {
         const hls = new Hls({
           enableWorker: true,
           lowLatencyMode: true,
-          maxBufferLength: 10,
-          maxMaxBufferLength: 30,
+          
+          // Buffer configuration for low latency
+          maxBufferLength: 3,              // 3秒のバッファ（was 10）
+          maxMaxBufferLength: 10,          // 最大10秒（was 30）
+          maxBufferSize: 10 * 1000 * 1000, // 10MB max buffer size
+          maxBufferHole: 0.5,              // 0.5秒の穴まで許容
+          
+          // Low latency optimizations
+          liveSyncDurationCount: 2,        // 2セグメント分のライブ同期（デフォルト3）
+          liveMaxLatencyDurationCount: 5,  // 最大5セグメント分の遅延
+          liveDurationInfinity: false,
+          
+          // Aggressive settings for reducing latency
+          highBufferWatchdogPeriod: 1,     // 1秒ごとにバッファチェック
+          nudgeMaxRetry: 5,
+          
+          // Fragment loading settings
+          fragLoadingTimeOut: 10000,
+          fragLoadingMaxRetry: 3,
+          fragLoadingRetryDelay: 500,
+          
+          // Level loading settings  
+          levelLoadingTimeOut: 10000,
+          levelLoadingMaxRetry: 3,
+          levelLoadingRetryDelay: 500,
         });
 
         hlsRef.current = hls;
