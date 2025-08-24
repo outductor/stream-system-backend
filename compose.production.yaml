@@ -45,7 +45,7 @@ services:
       RTMP_STREAM_KEY: ${RTMP_STREAM_KEY:-dsr2025}
       HLS_OUTPUT_DIR: /app/media
       LOG_LEVEL: ${LOG_LEVEL:-info}
-      EVENT_END_TIME: ${EVENT_END_TIME:-2025-08-31}
+      EVENT_END_TIME: ${EVENT_END_TIME:-2025-08-31 23:59:59}
       EVENT_TIMEZONE: ${EVENT_TIMEZONE:-Asia/Tokyo}
     volumes:
       - ./media:/app/media
