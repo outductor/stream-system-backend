@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react';
 import { Temporal } from 'temporal-polyfill';
 
 export function CurrentTime() {
-  const [currentTime, setCurrentTime] = useState(Temporal.Now.zonedDateTimeISO('Asia/Tokyo'));
+  const [currentTime, setCurrentTime] = useState(Temporal.Now.zonedDateTimeISO(Temporal.Now.timeZoneId()));
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setCurrentTime(Temporal.Now.zonedDateTimeISO('Asia/Tokyo'));
+      setCurrentTime(Temporal.Now.zonedDateTimeISO(Temporal.Now.timeZoneId()));
     }, 1000);
 
     return () => clearInterval(timer);

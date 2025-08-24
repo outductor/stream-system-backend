@@ -17,19 +17,10 @@ export function Timetable() {
   const { reservations, loading, error } = useReservations(selectedDate);
 
   const formatDateTime = (dateString: Temporal.Instant) => {
-    return dateString.toZonedDateTimeISO('Asia/Tokyo').toPlainTime().toString({ smallestUnit: 'minute' });
+    return dateString.toZonedDateTimeISO(Temporal.Now.timeZoneId()).toPlainTime().toString({ smallestUnit: 'minute' });
   };
 
   const formatDateHeader = (date: Temporal.PlainDate) => {
-    const today = Temporal.Now.plainDateISO('Asia/Tokyo');
-    const tomorrow = today.add({ days: 1 });
-    
-    if (date.equals(today)) {
-      return '今日';
-    } else if (date.equals(tomorrow)) {
-      return '明日';
-    }
-    
     const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
     const weekday = weekdays[date.dayOfWeek % 7];
     return `${date.month}月${date.day}日(${weekday})`;
@@ -40,7 +31,7 @@ export function Timetable() {
     
     reservationList.forEach(reservation => {
       const instant = Temporal.Instant.from(reservation.startTime);
-      const zonedDateTime = instant.toZonedDateTimeISO('Asia/Tokyo');
+      const zonedDateTime = instant.toZonedDateTimeISO(Temporal.Now.timeZoneId());
       const dateKey = zonedDateTime.toPlainDate().toString();
       
       if (!grouped.has(dateKey)) {
@@ -102,7 +93,7 @@ export function Timetable() {
   return (
     <div className="timetable">
       <div className="timetable-header">
-        <h1>DJ Event 2024 タイムテーブル</h1>
+        <h1>DSR2025 DJブース タイムテーブル</h1>
         <CurrentTime />
       </div>
       
@@ -118,19 +109,19 @@ export function Timetable() {
             className={selectedDate === 'today' ? 'active' : ''}
             onClick={() => setSelectedDate('today')}
           >
-            今日のみ
+            {formatDateHeader(today)}
           </button>
           <button 
             className={selectedDate === 'tomorrow' ? 'active' : ''}
             onClick={() => setSelectedDate('tomorrow')}
           >
-            明日のみ
+            {formatDateHeader(tomorrow)}
           </button>
           <button 
             className={selectedDate === 'dayAfterTomorrow' ? 'active' : ''}
             onClick={() => setSelectedDate('dayAfterTomorrow')}
           >
-            明後日のみ
+            {formatDateHeader(dayAfterTomorrow)}
           </button>
         </div>
         
@@ -189,7 +180,7 @@ export function Timetable() {
             <TimeSlotGrid 
               date={date} 
               reservations={reservations.filter(r =>
-                r.startTime.toZonedDateTimeISO('Asia/Tokyo').toPlainDate().equals(date)
+                r.startTime.toZonedDateTimeISO(Temporal.Now.timeZoneId()).toPlainDate().equals(date)
               )}
               onSlotClick={handleSlotClick}
             />

@@ -247,5 +247,6 @@ components:
             - INVALID_PASSCODE
             - INVALID_TIME_RANGE
             - RANGE_TOO_LARGE
+            - EXCEEDS_EVENT_END
         message:
           type: string

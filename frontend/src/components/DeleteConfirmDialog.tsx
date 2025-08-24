@@ -41,7 +41,7 @@ export function DeleteConfirmDialog({ reservation, onClose, onSuccess }: DeleteC
         
         <div className="reservation-info">
           <p><strong>DJ名:</strong> {reservation.djName}</p>
-          <p><strong>時間:</strong> {Temporal.Instant.from(reservation.startTime).toZonedDateTimeISO('Asia/Tokyo').toPlainTime().toString({ smallestUnit: 'minute' })} - {Temporal.Instant.from(reservation.endTime).toZonedDateTimeISO('Asia/Tokyo').toPlainTime().toString({ smallestUnit: 'minute' })}</p>
+          <p><strong>時間:</strong> {Temporal.Instant.from(reservation.startTime).toZonedDateTimeISO(Temporal.Now.timeZoneId()).toPlainTime().toString({ smallestUnit: 'minute' })} - {Temporal.Instant.from(reservation.endTime).toZonedDateTimeISO(Temporal.Now.timeZoneId()).toPlainTime().toString({ smallestUnit: 'minute' })}</p>
         </div>
 
         <form onSubmit={handleDelete}>

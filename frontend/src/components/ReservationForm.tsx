@@ -10,8 +10,8 @@ interface ReservationFormProps {
 }
 
 export function ReservationForm({ onClose, onSuccess, defaultStartInstant }: ReservationFormProps) {
-  const [selectedDate, setSelectedDate] = useState(defaultStartInstant?.toZonedDateTimeISO('Asia/Tokyo')?.toPlainDate());
-  const [selectedStartTime, setSelectedStartTime] = useState(defaultStartInstant?.toZonedDateTimeISO('Asia/Tokyo')?.toPlainTime());
+  const [selectedDate, setSelectedDate] = useState(defaultStartInstant?.toZonedDateTimeISO(Temporal.Now.timeZoneId())?.toPlainDate());
+  const [selectedStartTime, setSelectedStartTime] = useState(defaultStartInstant?.toZonedDateTimeISO(Temporal.Now.timeZoneId())?.toPlainTime());
 
   const [djName, setDjName] = useState('');
   const [duration, setDuration] = useState(60);
@@ -23,7 +23,7 @@ export function ReservationForm({ onClose, onSuccess, defaultStartInstant }: Res
   // Initialize with today's date
   useEffect(() => {
     if (!selectedDate) {
-      setSelectedDate(Temporal.Now.plainDateISO('Asia/Tokyo'));
+      setSelectedDate(Temporal.Now.plainDateISO(Temporal.Now.timeZoneId()));
     }
   }, [selectedDate]);
 
@@ -45,14 +45,15 @@ export function ReservationForm({ onClose, onSuccess, defaultStartInstant }: Res
   const getDateOptions = () => {
     const today = Temporal.Now.plainDateISO();
     const dates = [];
+    const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
     
     for (let i = 0; i < 3; i++) {
       const date = today.add({ days: i });
-      const label = i === 0 ? '今日' : i === 1 ? '明日' : `明後日`;
+      const weekday = weekdays[date.dayOfWeek % 7];
       
       dates.push({
         value: date,
-        label: `${label} (${date.month}/${date.day})`
+        label: `${date.month}月${date.day}日(${weekday})`
       });
     }
     
@@ -64,12 +65,12 @@ export function ReservationForm({ onClose, onSuccess, defaultStartInstant }: Res
     
     const times: { value: Temporal.PlainTime; label: string; available: boolean }[] = [];
     const selectedPlainDate = Temporal.PlainDate.from(selectedDate);
-    const now = Temporal.Now.plainDateTimeISO('Asia/Tokyo');
-    const today = Temporal.Now.plainDateISO('Asia/Tokyo');
+    const now = Temporal.Now.plainDateTimeISO(Temporal.Now.timeZoneId());
+    const today = Temporal.Now.plainDateISO(Temporal.Now.timeZoneId());
     
     // Filter slots for the selected date
     const slotsForDate = availableSlots.filter(slot => {
-      const slotDate = slot.startTime.toZonedDateTimeISO('Asia/Tokyo').toPlainDate();
+      const slotDate = slot.startTime.toZonedDateTimeISO(Temporal.Now.timeZoneId()).toPlainDate();
       return slotDate.equals(selectedPlainDate);
     });
     
@@ -84,7 +85,7 @@ export function ReservationForm({ onClose, onSuccess, defaultStartInstant }: Res
         }
         
         // Convert to instant for API compatibility
-        const instant = timeOnDate.toZonedDateTime('Asia/Tokyo').toInstant();
+        const instant = timeOnDate.toZonedDateTime(Temporal.Now.timeZoneId()).toInstant();
         const slot = slotsForDate.find(s => s.startTime.equals(instant));
         const available = slot ? slot.available : false;
         
@@ -106,7 +107,7 @@ export function ReservationForm({ onClose, onSuccess, defaultStartInstant }: Res
     if (!selectedDate || !selectedStartTime) return [15, 30, 45, 60];
     
     const selectedDateTime = selectedDate.toPlainDateTime(selectedStartTime);
-    const startInstant = selectedDateTime.toZonedDateTime('Asia/Tokyo').toInstant();
+    const startInstant = selectedDateTime.toZonedDateTime(Temporal.Now.timeZoneId()).toInstant();
     
     const durations = [15, 30, 45, 60];
     const availableDurations: number[] = [];
@@ -146,7 +147,7 @@ export function ReservationForm({ onClose, onSuccess, defaultStartInstant }: Res
 
       const startInstant = selectedDate
         .toPlainDateTime(selectedStartTime)
-        .toZonedDateTime('Asia/Tokyo').toInstant(); 
+        .toZonedDateTime(Temporal.Now.timeZoneId()).toInstant();
       await reservationsApi.createReservation({
         djName,
         startTime: startInstant,
@@ -164,7 +165,8 @@ export function ReservationForm({ onClose, onSuccess, defaultStartInstant }: Res
           INVALID_TIME_INTERVAL: '時間は15分刻みで指定してください',
           DURATION_TOO_LONG: '予約は最大1時間までです',
           INVALID_TIME_RANGE: '時間の指定が無効です',
-          RANGE_TOO_LARGE: '検索範囲が大きすぎます'
+          RANGE_TOO_LARGE: '検索範囲が大きすぎます',
+          EXCEEDS_EVENT_END: 'イベント終了時刻を超える予約はできません'
         };
         setError(errorMessages[error.response.data.code] || error.response.data.message || 'エラーが発生しました');
       } else {

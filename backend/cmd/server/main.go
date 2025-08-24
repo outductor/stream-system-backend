@@ -51,7 +51,7 @@ func main() {
 		logger.Fatalf("Failed to run migrations: %v", err)
 	}
 
-	handler := api.NewHandler(database, logger)
+	handler := api.NewHandler(database, logger, cfg)
 
 	r := chi.NewRouter()
 

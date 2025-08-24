@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/dj-event/stream-system/internal/config"
 	"github.com/dj-event/stream-system/internal/db"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -15,12 +16,14 @@ import (
 type Handler struct {
 	db     *db.DB
 	logger *logrus.Logger
+	config *config.Config
 }
 
-func NewHandler(database *db.DB, logger *logrus.Logger) *Handler {
+func NewHandler(database *db.DB, logger *logrus.Logger, cfg *config.Config) *Handler {
 	return &Handler{
 		db:     database,
 		logger: logger,
+		config: cfg,
 	}
 }
 
@@ -100,6 +103,12 @@ func (h *Handler) CreateReservation(w http.ResponseWriter, r *http.Request) {
 
 	if req.EndTime.Sub(req.StartTime) > time.Hour {
 		h.sendError(w, http.StatusBadRequest, "DURATION_TOO_LONG", "Reservation duration cannot exceed 1 hour")
+		return
+	}
+
+	// Check if reservation end time exceeds event end time
+	if h.config.EventEndTime != nil && req.EndTime.After(*h.config.EventEndTime) {
+		h.sendError(w, http.StatusBadRequest, "EXCEEDS_EVENT_END", "Reservation cannot extend beyond event end time")
 		return
 	}
 
@@ -193,6 +202,11 @@ func (h *Handler) GetAvailableSlots(w http.ResponseWriter, r *http.Request) {
 	if endTime.Sub(startTime) > maxRange {
 		h.sendError(w, http.StatusBadRequest, "RANGE_TOO_LARGE", "Query range cannot exceed 72 hours")
 		return
+	}
+
+	// Apply event end time cutoff if configured
+	if h.config.EventEndTime != nil && endTime.After(*h.config.EventEndTime) {
+		endTime = *h.config.EventEndTime
 	}
 
 	slots, err := h.db.GetAvailableSlotsInRange(startTime, endTime)

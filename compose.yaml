@@ -49,9 +49,11 @@ services:
       DB_NAME: stream_system
       DB_SSLMODE: disable
       RTMP_PORT: 1935
-      RTMP_STREAM_KEY: djevent2024
+      RTMP_STREAM_KEY: dsr2025
       HLS_OUTPUT_DIR: /app/media
       LOG_LEVEL: debug
+      EVENT_END_TIME: ${EVENT_END_TIME:-2025-08-31}
+      EVENT_TIMEZONE: ${EVENT_TIMEZONE:-Asia/Tokyo}
     volumes:
       - ./media:/app/media
     depends_on:

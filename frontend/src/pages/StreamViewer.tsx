@@ -32,12 +32,12 @@ export function StreamViewer() {
   }
 
   const formatTime = (dateString: Temporal.Instant) => {
-    return dateString.toZonedDateTimeISO('Asia/Tokyo').toPlainTime().toString({ smallestUnit: 'minute' });
+    return dateString.toZonedDateTimeISO(Temporal.Now.timeZoneId()).toPlainTime().toString({ smallestUnit: 'minute' });
   };
 
   return (
     <div className="stream-viewer">
-      <h1>DJ Event 2024 ライブ配信</h1>
+      <h1>DSR2025 DJブース ライブ配信</h1>
       
       <div className="stream-info">
         <div className={`live-indicator ${status.isLive ? 'live' : 'offline'}`}>
@@ -58,7 +58,12 @@ export function StreamViewer() {
         {status.nextDj && status.nextStartTime && (
           <div className="next-dj">
             <h3>次のDJ: {status.nextDj}</h3>
-            <p className="time-info">開始時刻: {formatTime(status.nextStartTime)}</p>
+            <p className="time-info">開始時刻: {(() => {
+              const zdt = status.nextStartTime.toZonedDateTimeISO(Temporal.Now.timeZoneId());
+              const date = zdt.toPlainDate();
+              const time = zdt.toPlainTime();
+              return `${date.month}/${date.day} ${time.toString({ smallestUnit: 'minute' })}`;
+            })()}</p>
           </div>
         )}
       </div>

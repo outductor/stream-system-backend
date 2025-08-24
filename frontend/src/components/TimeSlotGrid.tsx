@@ -18,11 +18,11 @@ export function TimeSlotGrid({ date, reservations, onSlotClick }: TimeSlotGridPr
       try {
         // Create start time from the beginning of the specified date
         const startOfDate = date.toPlainDateTime({ hour: 0, minute: 0 });
-        const startTime = startOfDate.toZonedDateTime('Asia/Tokyo').toInstant();
+        const startTime = startOfDate.toZonedDateTime(Temporal.Now.timeZoneId()).toInstant();
         
         // Create end time for the end of the specified date
         const endOfDate = date.toPlainDateTime({ hour: 23, minute: 59, second: 59, millisecond: 999 });
-        const endTime = endOfDate.toZonedDateTime('Asia/Tokyo').toInstant();
+        const endTime = endOfDate.toZonedDateTime(Temporal.Now.timeZoneId()).toInstant();
 
         const slots = await reservationsApi.getAvailableSlots(startTime, endTime);
         setAvailableSlots(slots);
@@ -49,7 +49,7 @@ export function TimeSlotGrid({ date, reservations, onSlotClick }: TimeSlotGridPr
       
       for (const minute of [0, 15, 30, 45]) {
         const slotTime = plainDate.toPlainDateTime({ hour, minute });
-        const slotInstant = slotTime.toZonedDateTime('Asia/Tokyo').toInstant();
+        const slotInstant = slotTime.toZonedDateTime(Temporal.Now.timeZoneId()).toInstant();
         
         const slot = availableSlots.find(s => s.startTime.equals(slotInstant));
         const reservation = slot ? findReservationForSlot(slot) : undefined;
