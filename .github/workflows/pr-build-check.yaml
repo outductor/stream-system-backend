@@ -11,7 +11,7 @@ on:
       - '.github/workflows/**'
 
 jobs:
-  build-backend:
+  docker-build-backend:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -29,7 +29,7 @@ jobs:
           cache-to: type=gha,mode=max
           platforms: linux/amd64
 
-  build-frontend:
+  docker-build-frontend:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -50,7 +50,7 @@ jobs:
             VITE_API_BASE_URL=/api/v1
             VITE_HLS_ENDPOINT=/hls/stream-endpoint/index.m3u8
 
-  build-mediamtx:
+  docker-build-mediamtx:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
