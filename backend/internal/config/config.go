@@ -1,14 +1,18 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"strconv"
+	"time"
 )
 
 type Config struct {
-	Server   ServerConfig
-	Database DatabaseConfig
-	LogLevel string
+	Server       ServerConfig
+	Database     DatabaseConfig
+	LogLevel     string
+	EventStartTime *time.Time
+	EventEndTime   *time.Time
 }
 
 type ServerConfig struct {
@@ -40,6 +44,56 @@ func Load() (*Config, error) {
 			SSLMode:  getEnv("DB_SSLMODE", "disable"),
 		},
 		LogLevel: getEnv("LOG_LEVEL", "info"),
+	}
+
+	// Get timezone from EVENT_TIMEZONE or default to Asia/Tokyo
+	tzStr := getEnv("EVENT_TIMEZONE", "Asia/Tokyo")
+	loc, tzErr := time.LoadLocation(tzStr)
+	if tzErr != nil {
+		return nil, fmt.Errorf("invalid EVENT_TIMEZONE: %v", tzErr)
+	}
+
+	// Load EVENT_START_TIME if specified
+	// Only supports "YYYY-MM-DD HH:MM:SS" format
+	if eventStartTimeStr := os.Getenv("EVENT_START_TIME"); eventStartTimeStr != "" {
+		// Parse time in "2006-01-02 15:04:05" format
+		eventStartTime, err := time.ParseInLocation("2006-01-02 15:04:05", eventStartTimeStr, loc)
+		if err != nil {
+			// If parsing fails, try date-only format and set to start of day
+			eventStartTime, err = time.ParseInLocation("2006-01-02", eventStartTimeStr, loc)
+			if err != nil {
+				return nil, fmt.Errorf("invalid EVENT_START_TIME format. Use YYYY-MM-DD HH:MM:SS format")
+			}
+			// Set to 00:00:00 for date-only input
+			eventStartTime = time.Date(eventStartTime.Year(), eventStartTime.Month(), eventStartTime.Day(), 0, 0, 0, 0, loc)
+		}
+
+		cfg.EventStartTime = &eventStartTime
+	}
+
+	// Load EVENT_END_TIME if specified
+	// Only supports "YYYY-MM-DD HH:MM:SS" format
+	if eventEndTimeStr := os.Getenv("EVENT_END_TIME"); eventEndTimeStr != "" {
+		// Parse time in "2006-01-02 15:04:05" format
+		eventEndTime, err := time.ParseInLocation("2006-01-02 15:04:05", eventEndTimeStr, loc)
+		if err != nil {
+			// If parsing fails, try date-only format and set to end of day
+			eventEndTime, err = time.ParseInLocation("2006-01-02", eventEndTimeStr, loc)
+			if err != nil {
+				return nil, fmt.Errorf("invalid EVENT_END_TIME format. Use YYYY-MM-DD HH:MM:SS format")
+			}
+			// Set to 23:59:59 for date-only input
+			eventEndTime = time.Date(eventEndTime.Year(), eventEndTime.Month(), eventEndTime.Day(), 23, 59, 59, 0, loc)
+		}
+
+		cfg.EventEndTime = &eventEndTime
+	}
+
+	// Validate that start time is before end time if both are set
+	if cfg.EventStartTime != nil && cfg.EventEndTime != nil {
+		if cfg.EventStartTime.After(*cfg.EventEndTime) {
+			return nil, fmt.Errorf("EVENT_START_TIME must be before EVENT_END_TIME")
+		}
 	}
 
 	return cfg, nil

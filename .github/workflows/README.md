@@ -94,14 +94,11 @@ docker compose -f compose.production.yml up -d
 # データベースパスワード
 DB_PASSWORD=your-secure-password
 
-# RTMPストリームキー
-RTMP_STREAM_KEY=your-stream-key
-
 # ログレベル
 LOG_LEVEL=info
 
 # イベント終了時刻
-EVENT_END_TIME=2025-08-31
+EVENT_END_TIME=2025-08-31 23:59:59
 EVENT_TIMEZONE=Asia/Tokyo
 ```
 

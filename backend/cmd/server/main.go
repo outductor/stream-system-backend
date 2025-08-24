@@ -51,7 +51,7 @@ func main() {
 		logger.Fatalf("Failed to run migrations: %v", err)
 	}
 
-	handler := api.NewHandler(database, logger)
+	handler := api.NewHandler(database, logger, cfg)
 
 	r := chi.NewRouter()
 
@@ -64,6 +64,7 @@ func main() {
 		r.Post("/reservations", handler.CreateReservation)
 		r.Delete("/reservations/{reservationId}", handler.DeleteReservation)
 		r.Get("/available-slots", handler.GetAvailableSlots)
+		r.Get("/event-config", handler.GetEventConfig)
 	})
 
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {

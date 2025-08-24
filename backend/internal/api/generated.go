@@ -22,7 +22,9 @@ import (
 
 // Defines values for ErrorCode.
 const (
+	BEFOREEVENTSTART    ErrorCode = "BEFORE_EVENT_START"
 	DURATIONTOOLONG     ErrorCode = "DURATION_TOO_LONG"
+	EXCEEDSEVENTEND     ErrorCode = "EXCEEDS_EVENT_END"
 	INVALIDPASSCODE     ErrorCode = "INVALID_PASSCODE"
 	INVALIDTIMEINTERVAL ErrorCode = "INVALID_TIME_INTERVAL"
 	INVALIDTIMERANGE    ErrorCode = "INVALID_TIME_RANGE"
@@ -54,6 +56,15 @@ type Error struct {
 
 // ErrorCode defines model for Error.Code.
 type ErrorCode string
+
+// EventConfig defines model for EventConfig.
+type EventConfig struct {
+	// EventEndTime Event end time (can be null if not configured)
+	EventEndTime *time.Time `json:"eventEndTime,omitempty"`
+
+	// EventStartTime Event start time (can be null if not configured)
+	EventStartTime *time.Time `json:"eventStartTime,omitempty"`
+}
 
 // Reservation defines model for Reservation.
 type Reservation struct {
@@ -100,6 +111,11 @@ type GetAvailableSlotsParams struct {
 	EndTime   *time.Time `form:"endTime,omitempty" json:"endTime,omitempty"`
 }
 
+// GetReservationsParams defines parameters for GetReservations.
+type GetReservationsParams struct {
+	Date *string `form:"date,omitempty" json:"date,omitempty"`
+}
+
 // DeleteReservationJSONBody defines parameters for DeleteReservation.
 type DeleteReservationJSONBody struct {
 	// Passcode 4-digit passcode
@@ -117,9 +133,12 @@ type ServerInterface interface {
 	// Get available time slots within a time range
 	// (GET /available-slots)
 	GetAvailableSlots(ctx echo.Context, params GetAvailableSlotsParams) error
-	// Get reservations for today and tomorrow
+	// Get event configuration including start and end times
+	// (GET /event-config)
+	GetEventConfig(ctx echo.Context) error
+	// Get all reservations within the event period
 	// (GET /reservations)
-	GetReservations(ctx echo.Context) error
+	GetReservations(ctx echo.Context, params GetReservationsParams) error
 	// Create a new reservation
 	// (POST /reservations)
 	CreateReservation(ctx echo.Context) error
@@ -161,12 +180,30 @@ func (w *ServerInterfaceWrapper) GetAvailableSlots(ctx echo.Context) error {
 	return err
 }
 
+// GetEventConfig converts echo context to params.
+func (w *ServerInterfaceWrapper) GetEventConfig(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetEventConfig(ctx)
+	return err
+}
+
 // GetReservations converts echo context to params.
 func (w *ServerInterfaceWrapper) GetReservations(ctx echo.Context) error {
 	var err error
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetReservationsParams
+	// ------------- Optional query parameter "date" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "date", ctx.QueryParams(), &params.Date)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter date: %s", err))
+	}
+
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.GetReservations(ctx)
+	err = w.Handler.GetReservations(ctx, params)
 	return err
 }
 
@@ -233,6 +270,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	}
 
 	router.GET(baseURL+"/available-slots", wrapper.GetAvailableSlots)
+	router.GET(baseURL+"/event-config", wrapper.GetEventConfig)
 	router.GET(baseURL+"/reservations", wrapper.GetReservations)
 	router.POST(baseURL+"/reservations", wrapper.CreateReservation)
 	router.DELETE(baseURL+"/reservations/:reservationId", wrapper.DeleteReservation)
@@ -243,28 +281,31 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

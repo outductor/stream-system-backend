@@ -13,7 +13,7 @@ RUN go build -o bin/stream-server ./cmd/server
 
 FROM alpine:latest
 
-RUN apk add --no-cache ffmpeg ca-certificates
+RUN apk add --no-cache ffmpeg ca-certificates tzdata
 
 WORKDIR /app
 

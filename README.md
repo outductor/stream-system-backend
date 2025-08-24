@@ -2,6 +2,8 @@
 
 DJイベント配信システム - ライブストリーミングとタイムテーブル管理のための全機能Webアプリケーション。
 
+📖 **[使用ガイド（USAGE.md）](./USAGE.md)** - 本番環境での起動方法とOBS配信設定はこちら
+
 ## 機能
 
 - **ライブストリーミング**: RTMP経由でのライブストリーム受信とHLS配信
@@ -20,29 +22,28 @@ DJイベント配信システム - ライブストリーミングとタイムテ
 - **API**: OpenAPI 3.0によるスキーマファースト開発
 - **コンテナ化**: Docker + Docker Compose
 
-## クイックスタート
+## 開発環境のセットアップ
 
-### Docker Composeを使用した起動（推奨）
+### 必要なソフトウェア
+
+- Docker & Docker Compose（推奨）
+- Node.js 20以上（フロントエンド開発）
+- Go 1.24以上（バックエンド開発）
+- PostgreSQL 17（ローカル開発時）
+
+### Docker Composeを使用した開発環境起動
 
 ```bash
 # リポジトリのクローン
 git clone <repository-url>
 cd stream-system-backend
 
-# Docker Composeで全サービス起動
+# 開発環境の起動
 docker compose up -d
 
 # ログの確認
 docker compose logs -f
 ```
-
-### アクセス情報
-
-- **Webアプリケーション**: http://localhost
-- **RTMP配信URL**: rtmp://localhost:19350/stream-endpoint
-  - ユーザー名: `mediamtx-streaming-usr`
-  - パスワード: `mediamtx-streaming-passwd`
-- **HLS視聴URL**: http://localhost/hls/stream-endpoint/index.m3u8
 
 ## サービス構成
 
@@ -51,6 +52,28 @@ docker compose logs -f
 - **backend**: Go API サーバー
 - **mediamtx**: RTMPストリーミングサーバー（ポート19350）
 - **postgres**: データベース
+
+## 環境変数
+
+開発時に設定可能な環境変数：
+
+```bash
+# バックエンド
+DB_HOST=localhost          # データベースホスト
+DB_PORT=5432              # データベースポート
+DB_NAME=stream_system     # データベース名
+DB_USER=postgres          # データベースユーザー
+DB_PASSWORD=postgres      # データベースパスワード
+SERVER_PORT=8080          # APIサーバーポート
+LOG_LEVEL=debug           # ログレベル
+EVENT_START_TIME=2025-08-29 00:00:00  # イベント開始時刻
+EVENT_END_TIME=2025-08-31 23:59:59    # イベント終了時刻
+EVENT_TIMEZONE=Asia/Tokyo             # タイムゾーン
+
+# フロントエンド（ビルド時）
+VITE_API_BASE_URL=http://localhost/api/v1     # API基底URL
+VITE_HLS_ENDPOINT=http://localhost/hls/stream-endpoint/index.m3u8  # HLS配信URL
+```
 
 ## ローカル開発
 
@@ -95,25 +118,6 @@ APIの詳細仕様は `api/openapi.yaml` を参照してください。
 - `DELETE /api/v1/reservations/{id}` - 予約の削除（パスコード認証）
 - `GET /api/v1/available-slots` - 指定時間範囲内の利用可能時間枠
 
-## 配信設定
-
-### RTMP配信設定
-
-- **サーバー**: `rtmp://localhost:19350/stream-endpoint`
-- **認証**:
-  - ユーザー名: `mediamtx-streaming-usr`
-  - パスワード: `mediamtx-streaming-passwd`
-
-### OBS Studio設定例
-
-1. **設定** → **配信**
-2. **サービス**: カスタム
-3. **サーバー**: `rtmp://localhost:19350/stream-endpoint`
-4. **ストリームキー**: `mediamtx-streaming-usr:mediamtx-streaming-passwd`
-
-または認証情報をサーバーURLに含める場合：
-- **サーバー**: `rtmp://mediamtx-streaming-usr:mediamtx-streaming-passwd@localhost:19350/stream-endpoint`
-- **ストリームキー**: （空欄）
 
 ## テスト動作確認
 
@@ -148,15 +152,20 @@ curl -X DELETE http://localhost/api/v1/reservations/{reservation-id} \
   -d '{"passcode": "1234"}'
 ```
 
-### 配信テスト
+### ローカル開発時のテスト
 
 ```bash
-# FFmpegでテスト配信（テスト用動画ファイルが必要）
-ffmpeg -re -i test_video.mp4 -c:v libx264 -c:a aac \
-  -f flv rtmp://mediamtx-streaming-usr:mediamtx-streaming-passwd@localhost:19350/stream-endpoint
+# ユニットテスト（バックエンド）
+cd backend
+go test ./...
 
-# ブラウザで視聴テスト
-open http://localhost/hls/stream-endpoint/index.m3u8
+# フロントエンドのテスト
+cd frontend
+npm test
+
+# E2Eテスト（Docker Compose環境が必要）
+docker compose up -d
+./scripts/e2e-test.sh  # テストスクリプトがある場合
 ```
 
 ## プロジェクト構造
@@ -244,6 +253,50 @@ docker compose build --no-cache
 
 # 再起動
 docker compose up -d
+```
+
+## CI/CD
+
+### GitHub Actions
+
+`.github/workflows/` に以下のワークフローが定義されています：
+
+- `pr-build-check.yaml`: プルリクエスト時のビルドチェック
+- `docker-publish.yaml`: Dockerイメージのビルドとプッシュ
+
+### コード品質
+
+```bash
+# バックエンドのリント
+cd backend
+golangci-lint run
+
+# フロントエンドのリント
+cd frontend
+npm run lint
+
+# TypeScriptの型チェック
+npm run type-check
+```
+
+## コントリビューティング
+
+1. フィーチャーブランチを作成
+2. 変更をコミット
+3. プルリクエストを作成
+4. レビューを受ける
+5. マージ
+
+### コミットメッセージのフォーマット
+
+```
+feat: 新機能の追加
+fix: バグ修正
+docs: ドキュメントのみの変更
+style: コードの意味に影響しない変更
+refactor: バグ修正や機能追加を含まないコード変更
+test: テストの追加や修正
+chore: ビルドプロセスやツールの変更
 ```
 
 ## ライセンス

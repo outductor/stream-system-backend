@@ -24,13 +24,20 @@ paths:
 
   /reservations:
     get:
-      summary: Get reservations for today and tomorrow
+      summary: Get all reservations within the event period
       operationId: getReservations
       tags:
         - reservations
+      parameters:
+        - name: date
+          in: query
+          required: false
+          schema:
+            type: string
+            description: Filter parameter (currently not used by backend, frontend filtering only)
       responses:
         '200':
-          description: List of reservations
+          description: List of reservations within the configured event period (EVENT_START_TIME to EVENT_END_TIME)
           content:
             application/json:
               schema:
@@ -96,6 +103,20 @@ paths:
           description: Invalid passcode
         '404':
           description: Reservation not found
+
+  /event-config:
+    get:
+      summary: Get event configuration including start and end times
+      operationId: getEventConfig
+      tags:
+        - config
+      responses:
+        '200':
+          description: Event configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventConfig'
 
   /available-slots:
     get:
@@ -247,5 +268,19 @@ components:
             - INVALID_PASSCODE
             - INVALID_TIME_RANGE
             - RANGE_TOO_LARGE
+            - EXCEEDS_EVENT_END
+            - BEFORE_EVENT_START
         message:
           type: string
+
+    EventConfig:
+      type: object
+      properties:
+        eventStartTime:
+          type: string
+          format: date-time
+          description: Event start time (can be null if not configured)
+        eventEndTime:
+          type: string
+          format: date-time
+          description: Event end time (can be null if not configured)

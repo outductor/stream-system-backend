@@ -14,19 +14,23 @@ services:
   frontend:
     build:
       context: ./frontend
-      # TODO: in production, replace the host with the actual domain name
       args:
-        - VITE_API_BASE_URL=http://127.0.0.1/api/v1
-        - VITE_HLS_ENDPOINT=http://127.0.0.1/hls/stream-endpoint/index.m3u8
+        # 開発環境では localhost を使用
+        # 本番環境では PRODUCTION_DOMAIN 環境変数で実際のドメインを指定
+        - VITE_API_BASE_URL=${PRODUCTION_DOMAIN:-http://localhost}/api/v1
+        - VITE_HLS_ENDPOINT=${PRODUCTION_DOMAIN:-http://localhost}/hls/stream-endpoint/index.m3u8
     environment:
       - NODE_ENV=production
     restart: unless-stopped
 
   postgres:
     image: postgres:17-alpine
+    env_file:
+      - path: ./.env
+        required: true
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
       POSTGRES_DB: stream_system
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -39,19 +43,22 @@ services:
 
   backend:
     build: ./backend
+    env_file:
+      - path: ./.env
+        required: true
     environment:
       SERVER_HOST: 0.0.0.0
       SERVER_PORT: 8080
       DB_HOST: postgres
       DB_PORT: 5432
       DB_USER: postgres
-      DB_PASSWORD: postgres
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
       DB_NAME: stream_system
       DB_SSLMODE: disable
-      RTMP_PORT: 1935
-      RTMP_STREAM_KEY: djevent2024
-      HLS_OUTPUT_DIR: /app/media
-      LOG_LEVEL: debug
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      EVENT_START_TIME: ${EVENT_START_TIME:-2025-08-29 00:00:00}
+      EVENT_END_TIME: ${EVENT_END_TIME:-2025-08-31 14:59:59}
+      EVENT_TIMEZONE: ${EVENT_TIMEZONE:-Asia/Tokyo}
     volumes:
       - ./media:/app/media
     depends_on:
