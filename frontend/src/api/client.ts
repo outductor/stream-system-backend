@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { type StreamStatus, type Reservation, type CreateReservationRequest, type TimeSlot, buildReservation, buildStreamStatus, buildTimeSlot } from '../types/api';
+import { type StreamStatus, type Reservation, type CreateReservationRequest, type TimeSlot, buildReservation, buildStreamStatus, buildTimeSlot, type StreamStatusResponse, type ReservationResponse, type TimeSlotResponse } from '../types/api';
 import type { Temporal } from 'temporal-polyfill';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:18080/api/v1';
@@ -13,7 +13,7 @@ const apiClient = axios.create({
 
 export const streamApi = {
   getStatus: async (): Promise<StreamStatus> => {
-    const response = await apiClient.get<any>('/stream/status');
+    const response = await apiClient.get<StreamStatusResponse>('/stream/status');
     return buildStreamStatus(response.data);
   },
 };
@@ -21,12 +21,12 @@ export const streamApi = {
 export const reservationsApi = {
   getReservations: async (date?: string): Promise<Reservation[]> => {
     const params = date ? { date } : undefined;
-    const response = await apiClient.get<any[]>('/reservations', { params });
+    const response = await apiClient.get<ReservationResponse[]>('/reservations', { params });
     return response.data.map(buildReservation);
   },
 
   createReservation: async (data: CreateReservationRequest): Promise<Reservation> => {
-    const response = await apiClient.post<any>('/reservations', {
+    const response = await apiClient.post<ReservationResponse>('/reservations', {
       djName: data.djName,
       startTime: data.startTime.toString(),
       endTime: data.endTime.toString(),
@@ -46,7 +46,7 @@ export const reservationsApi = {
     if (endTime) {
       params.endTime = endTime.toString();
     }
-    const response = await apiClient.get<any[]>('/available-slots', {
+    const response = await apiClient.get<TimeSlotResponse[]>('/available-slots', {
       params,
     });
     return response.data.map(buildTimeSlot);

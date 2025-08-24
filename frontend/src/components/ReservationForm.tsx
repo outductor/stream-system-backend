@@ -25,7 +25,7 @@ export function ReservationForm({ onClose, onSuccess, defaultStartInstant }: Res
     if (!selectedDate) {
       setSelectedDate(Temporal.Now.plainDateISO('Asia/Tokyo'));
     }
-  }, []);
+  }, [selectedDate]);
 
   // Fetch available slots once when component mounts
   useEffect(() => {
