@@ -102,6 +102,37 @@ export function ReservationForm({ onClose, onSuccess, defaultStartInstant }: Res
     return times;
   };
 
+  const getAvailableDurations = () => {
+    if (!selectedDate || !selectedStartTime) return [15, 30, 45, 60];
+    
+    const selectedDateTime = selectedDate.toPlainDateTime(selectedStartTime);
+    const startInstant = selectedDateTime.toZonedDateTime('Asia/Tokyo').toInstant();
+    
+    const durations = [15, 30, 45, 60];
+    const availableDurations: number[] = [];
+    
+    for (const duration of durations) {
+      let canSelect = true;
+      
+      // Check each 15-minute slot needed for this duration
+      for (let minutes = 0; minutes < duration; minutes += 15) {
+        const slotInstant = startInstant.add({ minutes });
+        const slot = availableSlots.find(s => s.startTime.equals(slotInstant));
+        
+        if (!slot || !slot.available) {
+          canSelect = false;
+          break;
+        }
+      }
+      
+      if (canSelect) {
+        availableDurations.push(duration);
+      }
+    }
+    
+    return availableDurations;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -124,8 +155,9 @@ export function ReservationForm({ onClose, onSuccess, defaultStartInstant }: Res
       });
 
       onSuccess();
-    } catch (err: any) {
-      if (err.response?.data?.code) {
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { code?: string; message?: string } } };
+      if (error.response?.data?.code) {
         const errorMessages: Record<string, string> = {
           TIME_CONFLICT: '指定された時間帯は既に予約されています',
           PAST_TIME: '過去の時間は予約できません',
@@ -134,7 +166,7 @@ export function ReservationForm({ onClose, onSuccess, defaultStartInstant }: Res
           INVALID_TIME_RANGE: '時間の指定が無効です',
           RANGE_TOO_LARGE: '検索範囲が大きすぎます'
         };
-        setError(errorMessages[err.response.data.code] || err.response.data.message);
+        setError(errorMessages[error.response.data.code] || error.response.data.message || 'エラーが発生しました');
       } else {
         setError('予約の作成に失敗しました');
       }
@@ -145,6 +177,14 @@ export function ReservationForm({ onClose, onSuccess, defaultStartInstant }: Res
 
   const dateOptions = getDateOptions();
   const startTimes = getAvailableStartTimes();
+  const availableDurations = getAvailableDurations();
+
+  // Auto-adjust duration if current selection becomes unavailable
+  useEffect(() => {
+    if (selectedStartTime && availableDurations.length > 0 && !availableDurations.includes(duration)) {
+      setDuration(availableDurations[0]);
+    }
+  }, [selectedStartTime, availableDurations, duration]);
 
   console.log(selectedStartTime)
 
@@ -213,10 +253,10 @@ export function ReservationForm({ onClose, onSuccess, defaultStartInstant }: Res
               value={duration}
               onChange={(e) => setDuration(Number(e.target.value))}
             >
-              <option value={15}>15分</option>
-              <option value={30}>30分</option>
-              <option value={45}>45分</option>
-              <option value={60}>60分</option>
+              <option value={15} disabled={!availableDurations.includes(15)}>15分</option>
+              <option value={30} disabled={!availableDurations.includes(30)}>30分</option>
+              <option value={45} disabled={!availableDurations.includes(45)}>45分</option>
+              <option value={60} disabled={!availableDurations.includes(60)}>60分</option>
             </select>
           </div>
 
