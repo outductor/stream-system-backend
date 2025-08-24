@@ -1,11 +1,13 @@
 import { Temporal } from 'temporal-polyfill';
 import { HLSPlayer } from '../components/HLSPlayer';
 import { useStreamStatus } from '../hooks/useStreamStatus';
+import { useViewerCount } from '../hooks/useViewerCount';
 
 const HLS_ENDPOINT = import.meta.env.VITE_HLS_ENDPOINT || 'http://localhost:8888/hls/stream';
 
 export function StreamViewer() {
   const { status, loading, error } = useStreamStatus();
+  const { viewerCount } = useViewerCount();
 
   if (loading) {
     return (
@@ -42,6 +44,9 @@ export function StreamViewer() {
       <div className="stream-info">
         <div className={`live-indicator ${status.isLive ? 'live' : 'offline'}`}>
           {status.isLive ? '● LIVE' : '● OFFLINE'}
+          {status.isLive && viewerCount !== null && (
+            <span className="viewer-count"> - {viewerCount} 人が視聴中</span>
+          )}
         </div>
         
         {/* Case 1: 配信枠あり＆配信中 */}

@@ -65,6 +65,7 @@ func main() {
 		r.Delete("/reservations/{reservationId}", handler.DeleteReservation)
 		r.Get("/available-slots", handler.GetAvailableSlots)
 		r.Get("/event-config", handler.GetEventConfig)
+		r.Get("/ws/viewer", handler.HandleWebSocket)
 	})
 
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
