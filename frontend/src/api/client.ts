@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { type StreamStatus, type Reservation, type CreateReservationRequest, type TimeSlot, buildReservation, buildStreamStatus, buildTimeSlot, type StreamStatusResponse, type ReservationResponse, type TimeSlotResponse } from '../types/api';
+import { type StreamStatus, type Reservation, type CreateReservationRequest, type TimeSlot, buildReservation, buildStreamStatus, buildTimeSlot, type StreamStatusResponse, type ReservationResponse, type TimeSlotResponse, type EventConfig, type EventConfigResponse, buildEventConfig } from '../types/api';
 import type { Temporal } from 'temporal-polyfill';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:18080/api/v1';
@@ -50,5 +50,12 @@ export const reservationsApi = {
       params,
     });
     return response.data.map(buildTimeSlot);
+  },
+};
+
+export const configApi = {
+  getEventConfig: async (): Promise<EventConfig> => {
+    const response = await apiClient.get<EventConfigResponse>('/event-config');
+    return buildEventConfig(response.data);
   },
 };

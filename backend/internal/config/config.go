@@ -8,10 +8,11 @@ import (
 )
 
 type Config struct {
-	Server      ServerConfig
-	Database    DatabaseConfig
-	LogLevel    string
-	EventEndTime *time.Time
+	Server       ServerConfig
+	Database     DatabaseConfig
+	LogLevel     string
+	EventStartTime *time.Time
+	EventEndTime   *time.Time
 }
 
 type ServerConfig struct {
@@ -45,16 +46,34 @@ func Load() (*Config, error) {
 		LogLevel: getEnv("LOG_LEVEL", "info"),
 	}
 
+	// Get timezone from EVENT_TIMEZONE or default to Asia/Tokyo
+	tzStr := getEnv("EVENT_TIMEZONE", "Asia/Tokyo")
+	loc, tzErr := time.LoadLocation(tzStr)
+	if tzErr != nil {
+		return nil, fmt.Errorf("invalid EVENT_TIMEZONE: %v", tzErr)
+	}
+
+	// Load EVENT_START_TIME if specified
+	// Only supports "YYYY-MM-DD HH:MM:SS" format
+	if eventStartTimeStr := os.Getenv("EVENT_START_TIME"); eventStartTimeStr != "" {
+		// Parse time in "2006-01-02 15:04:05" format
+		eventStartTime, err := time.ParseInLocation("2006-01-02 15:04:05", eventStartTimeStr, loc)
+		if err != nil {
+			// If parsing fails, try date-only format and set to start of day
+			eventStartTime, err = time.ParseInLocation("2006-01-02", eventStartTimeStr, loc)
+			if err != nil {
+				return nil, fmt.Errorf("invalid EVENT_START_TIME format. Use YYYY-MM-DD HH:MM:SS format")
+			}
+			// Set to 00:00:00 for date-only input
+			eventStartTime = time.Date(eventStartTime.Year(), eventStartTime.Month(), eventStartTime.Day(), 0, 0, 0, 0, loc)
+		}
+
+		cfg.EventStartTime = &eventStartTime
+	}
+
 	// Load EVENT_END_TIME if specified
 	// Only supports "YYYY-MM-DD HH:MM:SS" format
 	if eventEndTimeStr := os.Getenv("EVENT_END_TIME"); eventEndTimeStr != "" {
-		// Get timezone from EVENT_TIMEZONE or default to Asia/Tokyo
-		tzStr := getEnv("EVENT_TIMEZONE", "Asia/Tokyo")
-		loc, tzErr := time.LoadLocation(tzStr)
-		if tzErr != nil {
-			return nil, fmt.Errorf("invalid EVENT_TIMEZONE: %v", tzErr)
-		}
-
 		// Parse time in "2006-01-02 15:04:05" format
 		eventEndTime, err := time.ParseInLocation("2006-01-02 15:04:05", eventEndTimeStr, loc)
 		if err != nil {
@@ -68,6 +87,13 @@ func Load() (*Config, error) {
 		}
 
 		cfg.EventEndTime = &eventEndTime
+	}
+
+	// Validate that start time is before end time if both are set
+	if cfg.EventStartTime != nil && cfg.EventEndTime != nil {
+		if cfg.EventStartTime.After(*cfg.EventEndTime) {
+			return nil, fmt.Errorf("EVENT_START_TIME must be before EVENT_END_TIME")
+		}
 	}
 
 	return cfg, nil

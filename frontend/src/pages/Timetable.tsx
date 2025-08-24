@@ -1,23 +1,59 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Temporal } from 'temporal-polyfill';
 import { useReservations } from '../hooks/useReservations';
-import type { Reservation } from '../types/api';
+import type { Reservation, EventConfig } from '../types/api';
 import { CurrentTime } from '../components/CurrentTime';
 import { TimeSlotGrid } from '../components/TimeSlotGrid';
 import { ReservationForm } from '../components/ReservationForm';
 import { DeleteConfirmDialog } from '../components/DeleteConfirmDialog';
+import { configApi } from '../api/client';
 
-type DateSelection = 'any' | 'today' | 'tomorrow' | 'dayAfterTomorrow';
+type DateSelection = 'any' | string; // 'any' or ISO date string like '2025-08-29'
 
 export function Timetable() {
   const [selectedDate, setSelectedDate] = useState<DateSelection>('any');
   const [showReservationForm, setShowReservationForm] = useState(false);
   const [reservationFormDefaultInstant, setReservationFormDefaultInstant] = useState<Temporal.Instant | null>(null);
   const [deleteReservation, setDeleteReservation] = useState<Reservation | null>(null);
+  const [eventConfig, setEventConfig] = useState<EventConfig | null>(null);
   const { reservations, loading, error } = useReservations(selectedDate);
 
-  const formatDateTime = (dateString: Temporal.Instant) => {
-    return dateString.toZonedDateTimeISO(Temporal.Now.timeZoneId()).toPlainTime().toString({ smallestUnit: 'minute' });
+  useEffect(() => {
+    configApi.getEventConfig().then(setEventConfig).catch(console.error);
+  }, []);
+
+  const formatDateTimeWithCrossDay = (reservation: Reservation, currentDate: Temporal.PlainDate) => {
+    const startZoned = reservation.startTime.toZonedDateTimeISO(Temporal.Now.timeZoneId());
+    const endZoned = reservation.endTime.toZonedDateTimeISO(Temporal.Now.timeZoneId());
+    const startDate = startZoned.toPlainDate();
+    const endDate = endZoned.toPlainDate();
+    
+    const formatTimeWithOver24 = (time: Temporal.PlainTime, isNextDay: boolean) => {
+      const hour = isNextDay ? time.hour + 24 : time.hour;
+      const minute = time.minute.toString().padStart(2, '0');
+      return `${hour}:${minute}`;
+    };
+    
+    const startTimeStr = formatTimeWithOver24(startZoned.toPlainTime(), false);
+    const endTimeStr = formatTimeWithOver24(
+      endZoned.toPlainTime(), 
+      currentDate.equals(startDate) && !startDate.equals(endDate)
+    );
+    
+    // If reservation spans multiple days
+    if (!startDate.equals(endDate)) {
+      if (currentDate.equals(startDate)) {
+        // On start date, show end time as 24+ hours (e.g., 25:00 for 1:00 AM next day)
+        return `${startTimeStr} - ${endTimeStr}`;
+      } else if (currentDate.equals(endDate)) {
+        // On end date, show that it started from previous day
+        const normalEndTimeStr = endZoned.toPlainTime().toString({ smallestUnit: 'minute' });
+        return `前日${startZoned.toPlainTime().toString({ smallestUnit: 'minute' })} - ${normalEndTimeStr}`;
+      }
+    }
+    
+    // Same day reservation
+    return `${startTimeStr} - ${endZoned.toPlainTime().toString({ smallestUnit: 'minute' })}`;
   };
 
   const formatDateHeader = (date: Temporal.PlainDate) => {
@@ -30,14 +66,32 @@ export function Timetable() {
     const grouped = new Map<string /* Temporal.PlainDate */, Reservation[]>();
     
     reservationList.forEach(reservation => {
-      const instant = Temporal.Instant.from(reservation.startTime);
-      const zonedDateTime = instant.toZonedDateTimeISO(Temporal.Now.timeZoneId());
-      const dateKey = zonedDateTime.toPlainDate().toString();
+      const startInstant = Temporal.Instant.from(reservation.startTime);
+      const endInstant = Temporal.Instant.from(reservation.endTime);
+      const startZonedDateTime = startInstant.toZonedDateTimeISO(Temporal.Now.timeZoneId());
+      const endZonedDateTime = endInstant.toZonedDateTimeISO(Temporal.Now.timeZoneId());
+      const startDate = startZonedDateTime.toPlainDate();
+      const endDate = endZonedDateTime.toPlainDate();
       
-      if (!grouped.has(dateKey)) {
-        grouped.set(dateKey, []);
+      // Add reservation to start date
+      const startDateKey = startDate.toString();
+      if (!grouped.has(startDateKey)) {
+        grouped.set(startDateKey, []);
       }
-      grouped.get(dateKey)!.push(reservation);
+      grouped.get(startDateKey)!.push(reservation);
+      
+      // If reservation spans multiple days, also add to end date
+      if (!startDate.equals(endDate)) {
+        const endDateKey = endDate.toString();
+        if (!grouped.has(endDateKey)) {
+          grouped.set(endDateKey, []);
+        }
+        // Avoid duplicate if already added
+        const existingInEndDate = grouped.get(endDateKey)!;
+        if (!existingInEndDate.some(r => r.id === reservation.id)) {
+          grouped.get(endDateKey)!.push(reservation);
+        }
+      }
     });
 
     return (
@@ -65,15 +119,34 @@ export function Timetable() {
 
   const groupedReservations = groupReservationsByDate(reservations);
 
-  const today = Temporal.Now.plainDateISO('Asia/Tokyo');
-  const tomorrow = today.add({ days: 1 });
-  const dayAfterTomorrow = today.add({ days: 2 });
+  // イベント期間から日付リストを生成
+  const generateEventDays = (): Temporal.PlainDate[] => {
+    if (!eventConfig?.eventStartTime || !eventConfig?.eventEndTime) {
+      // フォールバック: 今日から3日間
+      const today = Temporal.Now.plainDateISO('Asia/Tokyo');
+      return [today, today.add({ days: 1 }), today.add({ days: 2 })];
+    }
+
+    const startDate = eventConfig.eventStartTime.toZonedDateTimeISO('Asia/Tokyo').toPlainDate();
+    const endDate = eventConfig.eventEndTime.toZonedDateTimeISO('Asia/Tokyo').toPlainDate();
+    
+    const days: Temporal.PlainDate[] = [];
+    let currentDate = startDate;
+    
+    while (Temporal.PlainDate.compare(currentDate, endDate) <= 0) {
+      days.push(currentDate);
+      currentDate = currentDate.add({ days: 1 });
+    }
+    
+    return days;
+  };
+
+  const eventDays = generateEventDays();
 
   const daysSelected =
-    selectedDate === 'any' ? [today, tomorrow, dayAfterTomorrow] :
-    selectedDate === 'today' ? [today] :
-    selectedDate === 'tomorrow' ? [tomorrow] :
-    selectedDate === 'dayAfterTomorrow' ? [dayAfterTomorrow] : [];
+    selectedDate === 'any' 
+      ? eventDays 
+      : eventDays.filter(d => d.toString() === selectedDate);
 
   const handleReservationSuccess = () => {
     setShowReservationForm(false);
@@ -105,24 +178,15 @@ export function Timetable() {
           >
             すべて
           </button>
-          <button 
-            className={selectedDate === 'today' ? 'active' : ''}
-            onClick={() => setSelectedDate('today')}
-          >
-            {formatDateHeader(today)}
-          </button>
-          <button 
-            className={selectedDate === 'tomorrow' ? 'active' : ''}
-            onClick={() => setSelectedDate('tomorrow')}
-          >
-            {formatDateHeader(tomorrow)}
-          </button>
-          <button 
-            className={selectedDate === 'dayAfterTomorrow' ? 'active' : ''}
-            onClick={() => setSelectedDate('dayAfterTomorrow')}
-          >
-            {formatDateHeader(dayAfterTomorrow)}
-          </button>
+          {eventDays.map((date) => (
+            <button
+              key={date.toString()}
+              className={selectedDate === date.toString() ? 'active' : ''}
+              onClick={() => setSelectedDate(date.toString())}
+            >
+              {formatDateHeader(date)}
+            </button>
+          ))}
         </div>
         
         <div className="action-buttons">
@@ -138,13 +202,22 @@ export function Timetable() {
         </div>
       </div>
 
-      {groupedReservations.length === 0 ? (
-        <div className="no-reservations">
-          <p>予約がありません</p>
-        </div>
-      ) : (
-        <div className="reservations-list">
-          {groupedReservations.map(([date, dateReservations]) => (
+      {(() => {
+        const filteredReservations = groupedReservations.filter(([date]) => 
+          daysSelected.some(selectedDay => selectedDay.equals(date))
+        );
+        
+        if (filteredReservations.length === 0) {
+          return (
+            <div className="no-reservations">
+              <p>選択された日付に予約がありません</p>
+            </div>
+          );
+        }
+        
+        return (
+          <div className="reservations-list">
+            {filteredReservations.map(([date, dateReservations]) => (
             <div key={date.toString()} className="date-group">
               <h2 className="date-header">{formatDateHeader(date)}</h2>
               <div className="reservation-items">
@@ -154,7 +227,7 @@ export function Timetable() {
                     <div key={reservation.id} className="reservation-item">
                       <div className="reservation-content">
                         <div className="time-slot">
-                          {formatDateTime(reservation.startTime)} - {formatDateTime(reservation.endTime)}
+                          {formatDateTimeWithCrossDay(reservation, date)}
                         </div>
                         <div className="dj-name">{reservation.djName}</div>
                       </div>
@@ -169,8 +242,9 @@ export function Timetable() {
               </div>
             </div>
           ))}
-        </div>
-      )}
+          </div>
+        );
+      })()}
       
       <div className="slot-grid-section">
         <h2>空き時間状況</h2>

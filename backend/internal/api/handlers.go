@@ -64,8 +64,22 @@ func (h *Handler) GetReservations(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	apiReservations := make([]Reservation, len(reservations))
-	for i, res := range reservations {
+	// Filter reservations within event period if configured
+	filteredReservations := []db.Reservation{}
+	for _, res := range reservations {
+		// Skip reservations before event start
+		if h.config.EventStartTime != nil && res.StartTime.Before(*h.config.EventStartTime) {
+			continue
+		}
+		// Skip reservations after event end
+		if h.config.EventEndTime != nil && res.EndTime.After(*h.config.EventEndTime) {
+			continue
+		}
+		filteredReservations = append(filteredReservations, res)
+	}
+
+	apiReservations := make([]Reservation, len(filteredReservations))
+	for i, res := range filteredReservations {
 		apiReservations[i] = Reservation{
 			Id:        openapi_types.UUID(res.ID),
 			DjName:    res.DJName,
@@ -103,6 +117,12 @@ func (h *Handler) CreateReservation(w http.ResponseWriter, r *http.Request) {
 
 	if req.EndTime.Sub(req.StartTime) > time.Hour {
 		h.sendError(w, http.StatusBadRequest, "DURATION_TOO_LONG", "Reservation duration cannot exceed 1 hour")
+		return
+	}
+
+	// Check if reservation start time is before event start time
+	if h.config.EventStartTime != nil && req.StartTime.Before(*h.config.EventStartTime) {
+		h.sendError(w, http.StatusBadRequest, "BEFORE_EVENT_START", "Reservation cannot start before event start time")
 		return
 	}
 
@@ -166,6 +186,21 @@ func (h *Handler) DeleteReservation(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func (h *Handler) GetEventConfig(w http.ResponseWriter, r *http.Request) {
+	config := EventConfig{}
+	
+	if h.config.EventStartTime != nil {
+		config.EventStartTime = h.config.EventStartTime
+	}
+	
+	if h.config.EventEndTime != nil {
+		config.EventEndTime = h.config.EventEndTime
+	}
+	
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(config)
+}
+
 func (h *Handler) GetAvailableSlots(w http.ResponseWriter, r *http.Request) {
 	startTimeStr := r.URL.Query().Get("startTime")
 	if startTimeStr == "" {
@@ -202,6 +237,11 @@ func (h *Handler) GetAvailableSlots(w http.ResponseWriter, r *http.Request) {
 	if endTime.Sub(startTime) > maxRange {
 		h.sendError(w, http.StatusBadRequest, "RANGE_TOO_LARGE", "Query range cannot exceed 72 hours")
 		return
+	}
+
+	// Apply event start time cutoff if configured
+	if h.config.EventStartTime != nil && startTime.Before(*h.config.EventStartTime) {
+		startTime = *h.config.EventStartTime
 	}
 
 	// Apply event end time cutoff if configured

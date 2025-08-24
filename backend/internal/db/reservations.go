@@ -10,21 +10,15 @@ import (
 
 func (db *DB) GetReservations() ([]Reservation, error) {
 	var reservations []Reservation
-	var query string
-	var args []interface{}
-
-	today := time.Now().Truncate(24 * time.Hour)
-	dayAfterTomorrow := today.Add(48 * time.Hour)
-
-	query = `
+	
+	// Get all reservations ordered by start time
+	query := `
 		SELECT id, dj_name, start_time, end_time, passcode, created_at
 		FROM reservations
-		WHERE start_time >= $1 AND start_time < $2
 		ORDER BY start_time
 	`
-	args = []interface{}{today, dayAfterTomorrow}
-
-	err := db.Select(&reservations, query, args...)
+	
+	err := db.Select(&reservations, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get reservations: %w", err)
 	}

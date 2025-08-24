@@ -83,6 +83,23 @@ export const buildTimeSlot = (plainData: TimeSlotResponse): TimeSlot => {
 };
 
 export interface ApiError {
-  code: 'TIME_CONFLICT' | 'PAST_TIME' | 'INVALID_TIME_INTERVAL' | 'DURATION_TOO_LONG' | 'INVALID_PASSCODE';
+  code: 'TIME_CONFLICT' | 'PAST_TIME' | 'INVALID_TIME_INTERVAL' | 'DURATION_TOO_LONG' | 'INVALID_PASSCODE' | 'BEFORE_EVENT_START' | 'EXCEEDS_EVENT_END';
   message: string;
 }
+
+export interface EventConfig {
+  eventStartTime?: Temporal.Instant;
+  eventEndTime?: Temporal.Instant;
+}
+
+export interface EventConfigResponse {
+  eventStartTime?: string;
+  eventEndTime?: string;
+}
+
+export const buildEventConfig = (plainData: EventConfigResponse): EventConfig => {
+  return {
+    eventStartTime: plainData.eventStartTime ? Temporal.Instant.from(plainData.eventStartTime) : undefined,
+    eventEndTime: plainData.eventEndTime ? Temporal.Instant.from(plainData.eventEndTime) : undefined,
+  };
+};

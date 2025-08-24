@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Temporal } from 'temporal-polyfill';
-import { reservationsApi } from '../api/client';
-import type { TimeSlot } from '../types/api';
+import { reservationsApi, configApi } from '../api/client';
+import type { TimeSlot, EventConfig } from '../types/api';
 
 interface ReservationFormProps {
   onClose: () => void;
@@ -19,42 +19,71 @@ export function ReservationForm({ onClose, onSuccess, defaultStartInstant }: Res
   const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [eventConfig, setEventConfig] = useState<EventConfig | null>(null);
 
-  // Initialize with today's date
+  // Fetch event config
   useEffect(() => {
-    if (!selectedDate) {
-      setSelectedDate(Temporal.Now.plainDateISO(Temporal.Now.timeZoneId()));
-    }
-  }, [selectedDate]);
+    configApi.getEventConfig().then(setEventConfig).catch(console.error);
+  }, []);
 
-  // Fetch available slots once when component mounts
+  // Initialize with first event date
+  useEffect(() => {
+    if (!selectedDate && eventConfig?.eventStartTime) {
+      setSelectedDate(eventConfig.eventStartTime.toZonedDateTimeISO('Asia/Tokyo').toPlainDate());
+    }
+  }, [selectedDate, eventConfig]);
+
+  // Fetch available slots when event config is loaded
   useEffect(() => {
     const fetchAvailableSlots = async () => {
+      if (!eventConfig?.eventStartTime || !eventConfig?.eventEndTime) return;
+
       try {
-        // endTime will be automatically set to 72 hours from now by the backend
-        const slots = await reservationsApi.getAvailableSlots(Temporal.Now.instant());
+        // Use event start time or current time, whichever is later
+        const now = Temporal.Now.instant();
+        const startTime = Temporal.Instant.compare(now, eventConfig.eventStartTime) > 0 
+          ? now
+          : eventConfig.eventStartTime;
+
+        const slots = await reservationsApi.getAvailableSlots(startTime, eventConfig.eventEndTime);
         setAvailableSlots(slots);
       } catch (err) {
         console.error('Failed to fetch available slots:', err);
       }
     };
     fetchAvailableSlots();
-  }, []);
+  }, [eventConfig]);
 
   // Generate date options for the next 3 days
   const getDateOptions = () => {
-    const today = Temporal.Now.plainDateISO();
     const dates = [];
     const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
     
-    for (let i = 0; i < 3; i++) {
-      const date = today.add({ days: i });
-      const weekday = weekdays[date.dayOfWeek % 7];
+    if (eventConfig?.eventStartTime && eventConfig?.eventEndTime) {
+      // Use event period
+      const startDate = eventConfig.eventStartTime.toZonedDateTimeISO('Asia/Tokyo').toPlainDate();
+      const endDate = eventConfig.eventEndTime.toZonedDateTimeISO('Asia/Tokyo').toPlainDate();
       
-      dates.push({
-        value: date,
-        label: `${date.month}月${date.day}日(${weekday})`
-      });
+      let currentDate = startDate;
+      while (Temporal.PlainDate.compare(currentDate, endDate) <= 0) {
+        const weekday = weekdays[currentDate.dayOfWeek % 7];
+        dates.push({
+          value: currentDate,
+          label: `${currentDate.month}月${currentDate.day}日(${weekday})`
+        });
+        currentDate = currentDate.add({ days: 1 });
+      }
+    } else {
+      // Fallback to today + 2 days
+      const today = Temporal.Now.plainDateISO();
+      for (let i = 0; i < 3; i++) {
+        const date = today.add({ days: i });
+        const weekday = weekdays[date.dayOfWeek % 7];
+        dates.push({
+          value: date,
+          label: `${date.month}月${date.day}日(${weekday})`
+        });
+      }
     }
     
     return dates;
@@ -86,10 +115,24 @@ export function ReservationForm({ onClose, onSuccess, defaultStartInstant }: Res
         
         // Convert to instant for API compatibility
         const instant = timeOnDate.toZonedDateTime(Temporal.Now.timeZoneId()).toInstant();
+        
+        // Skip times before event start
+        if (eventConfig?.eventStartTime && Temporal.Instant.compare(instant, eventConfig.eventStartTime) < 0) {
+          continue;
+        }
+        
+        // Skip times after event end (considering duration)
+        if (eventConfig?.eventEndTime) {
+          const endInstant = instant.add({ minutes: duration });
+          if (Temporal.Instant.compare(endInstant, eventConfig.eventEndTime) > 0) {
+            continue;
+          }
+        }
+        
         const slot = slotsForDate.find(s => s.startTime.equals(instant));
         const available = slot ? slot.available : false;
         
-        // Only include slots that were returned by the API (within the 72-hour window)
+        // Only include slots that were returned by the API (within the event window)
         if (slot) {
           times.push({
             value: timeOnDate.toPlainTime(),
