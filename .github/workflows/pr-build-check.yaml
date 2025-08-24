@@ -26,8 +26,8 @@ jobs:
       - name: Check code generation
         working-directory: ./backend
         run: |
-          go install github.com/deepmap/oapi-codegen/cmd/oapi-codegen@latest
-          oapi-codegen -package api -generate types,server,spec ../api/openapi.yaml > generated_test.go
+          go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
+          oapi-codegen -config oapi-codegen.yaml ../api/openapi.yaml > generated_test.go
           diff generated_test.go internal/api/generated.go || (echo "Generated code is out of sync. Please run 'make generate-api'" && exit 1)
 
   lint-backend:
