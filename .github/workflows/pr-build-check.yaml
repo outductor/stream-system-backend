@@ -27,7 +27,7 @@ jobs:
         working-directory: ./backend
         run: |
           go get -tool github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
-          go tool oapi-codegen -config oapi-codegen.yaml ../api/openapi.yaml > generated_test.go
+          go tool oapi-codegen -package api -generate types,spec ../api/openapi.yaml > generated_test.go
           diff generated_test.go internal/api/generated.go || (echo "Generated code is out of sync. Please run 'make generate-api'" && exit 1)
 
   lint-backend:
