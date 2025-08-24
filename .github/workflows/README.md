@@ -94,9 +94,6 @@ docker compose -f compose.production.yml up -d
 # データベースパスワード
 DB_PASSWORD=your-secure-password
 
-# RTMPストリームキー
-RTMP_STREAM_KEY=your-stream-key
-
 # ログレベル
 LOG_LEVEL=info
 

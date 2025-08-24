@@ -25,9 +25,12 @@ services:
 
   postgres:
     image: postgres:17-alpine
+    env_file:
+      - path: ./.env
+        required: true
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
       POSTGRES_DB: stream_system
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -40,16 +43,19 @@ services:
 
   backend:
     build: ./backend
+    env_file:
+      - path: ./.env
+        required: true
     environment:
       SERVER_HOST: 0.0.0.0
       SERVER_PORT: 8080
       DB_HOST: postgres
       DB_PORT: 5432
       DB_USER: postgres
-      DB_PASSWORD: postgres
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
       DB_NAME: stream_system
       DB_SSLMODE: disable
-      LOG_LEVEL: debug
+      LOG_LEVEL: ${LOG_LEVEL:-info}
       EVENT_START_TIME: ${EVENT_START_TIME:-2025-08-29 00:00:00}
       EVENT_END_TIME: ${EVENT_END_TIME:-2025-08-31 14:59:59}
       EVENT_TIMEZONE: ${EVENT_TIMEZONE:-Asia/Tokyo}
@@ -60,7 +66,6 @@ services:
         condition: service_healthy
 
   mediamtx:
-    # image: bluenviron/mediamtx:1.14.0
     build: ./mediamtx
     ports:
       # RTMP (incoming video) port
