@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Temporal } from 'temporal-polyfill';
+import axios from 'axios';
 import { reservationsApi } from '../api/client';
 import type { Reservation } from '../types/api';
 
@@ -22,8 +23,8 @@ export function DeleteConfirmDialog({ reservation, onClose, onSuccess }: DeleteC
     try {
       await reservationsApi.deleteReservation(reservation.id, passcode);
       onSuccess();
-    } catch (err: any) {
-      if (err.response?.status === 401) {
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err) && err.response?.status === 401) {
         setError('暗証番号が正しくありません');
       } else {
         setError('削除に失敗しました');

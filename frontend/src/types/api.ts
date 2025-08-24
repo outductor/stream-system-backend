@@ -9,7 +9,16 @@ export interface StreamStatus {
   nextStartTime?: Temporal.Instant;
 }
 
-export const buildStreamStatus = (plainData: any): StreamStatus => {
+export interface StreamStatusResponse {
+  isLive: boolean;
+  currentDj?: string;
+  nextDj?: string;
+  currentStartTime?: string;
+  currentEndTime?: string;
+  nextStartTime?: string;
+}
+
+export const buildStreamStatus = (plainData: StreamStatusResponse): StreamStatus => {
   return {
     isLive: plainData.isLive,
     currentDj: plainData.currentDj,
@@ -28,7 +37,15 @@ export interface Reservation {
   createdAt: Temporal.Instant;
 }
 
-export const buildReservation = (plainData: any): Reservation => {
+export interface ReservationResponse {
+  id: string;
+  djName: string;
+  startTime: string;
+  endTime: string;
+  createdAt: string;
+}
+
+export const buildReservation = (plainData: ReservationResponse): Reservation => {
   return {
     id: plainData.id,
     djName: plainData.djName,
@@ -51,7 +68,13 @@ export interface TimeSlot {
   available: boolean;
 }
 
-export const buildTimeSlot = (plainData: any): TimeSlot => {
+export interface TimeSlotResponse {
+  startTime: string;
+  endTime: string;
+  available: boolean;
+}
+
+export const buildTimeSlot = (plainData: TimeSlotResponse): TimeSlot => {
   return {
     startTime: Temporal.Instant.from(plainData.startTime),
     endTime: Temporal.Instant.from(plainData.endTime),

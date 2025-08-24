@@ -50,7 +50,7 @@ func (h *Handler) GetStreamStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(status)
+	_ = json.NewEncoder(w).Encode(status)
 }
 
 func (h *Handler) GetReservations(w http.ResponseWriter, r *http.Request) {
@@ -73,7 +73,7 @@ func (h *Handler) GetReservations(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(apiReservations)
+	_ = json.NewEncoder(w).Encode(apiReservations)
 }
 
 func (h *Handler) CreateReservation(w http.ResponseWriter, r *http.Request) {
@@ -120,7 +120,7 @@ func (h *Handler) CreateReservation(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(apiReservation)
+	_ = json.NewEncoder(w).Encode(apiReservation)
 }
 
 func (h *Handler) DeleteReservation(w http.ResponseWriter, r *http.Request) {

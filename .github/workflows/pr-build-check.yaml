@@ -180,15 +180,27 @@ jobs:
       
       - name: Run API tests
         run: |
+          # Calculate times on 15-minute intervals
+          # Get current time + 1 hour, rounded to next 15-minute interval
+          NOW=$(date +%s)
+          HOUR_LATER=$((NOW + 3600))
+          # Round up to next 15-minute interval
+          START_TIME=$((((HOUR_LATER + 899) / 900) * 900))
+          END_TIME=$((START_TIME + 3600))
+          
+          # Format times
+          START_TIME_STR=$(date -u -d "@$START_TIME" '+%Y-%m-%dT%H:%M:%S')
+          END_TIME_STR=$(date -u -d "@$END_TIME" '+%Y-%m-%dT%H:%M:%S')
+          
           # Test reservation creation
           RESPONSE=$(curl -s -X POST http://localhost/api/v1/reservations \
             -H "Content-Type: application/json" \
-            -d '{
-              "djName": "Test DJ",
-              "startTime": "'$(date -u -d "+1 hour" '+%Y-%m-%dT%H:%M:%S')'Z",
-              "endTime": "'$(date -u -d "+2 hours" '+%Y-%m-%dT%H:%M:%S')'Z",
-              "passcode": "1234"
-            }')
+            -d "{
+              \"djName\": \"Test DJ\",
+              \"startTime\": \"${START_TIME_STR}Z\",
+              \"endTime\": \"${END_TIME_STR}Z\",
+              \"passcode\": \"1234\"
+            }")
           
           echo "Reservation created: $RESPONSE"
           
