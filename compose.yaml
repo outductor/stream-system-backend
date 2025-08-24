@@ -14,10 +14,11 @@ services:
   frontend:
     build:
       context: ./frontend
-      # TODO: in production, replace the host with the actual domain name
       args:
-        - VITE_API_BASE_URL=http://127.0.0.1/api/v1
-        - VITE_HLS_ENDPOINT=http://127.0.0.1/hls/stream-endpoint/index.m3u8
+        # 開発環境では localhost を使用
+        # 本番環境では PRODUCTION_DOMAIN 環境変数で実際のドメインを指定
+        - VITE_API_BASE_URL=${PRODUCTION_DOMAIN:-http://localhost}/api/v1
+        - VITE_HLS_ENDPOINT=${PRODUCTION_DOMAIN:-http://localhost}/hls/stream-endpoint/index.m3u8
     environment:
       - NODE_ENV=production
     restart: unless-stopped
@@ -48,12 +49,9 @@ services:
       DB_PASSWORD: postgres
       DB_NAME: stream_system
       DB_SSLMODE: disable
-      RTMP_PORT: 1935
-      RTMP_STREAM_KEY: dsr2025
-      HLS_OUTPUT_DIR: /app/media
       LOG_LEVEL: debug
       EVENT_START_TIME: ${EVENT_START_TIME:-2025-08-29 00:00:00}
-      EVENT_END_TIME: ${EVENT_END_TIME:-2025-08-31 23:59:59}
+      EVENT_END_TIME: ${EVENT_END_TIME:-2025-08-31 14:59:59}
       EVENT_TIMEZONE: ${EVENT_TIMEZONE:-Asia/Tokyo}
     volumes:
       - ./media:/app/media
@@ -62,6 +60,7 @@ services:
         condition: service_healthy
 
   mediamtx:
+    # image: bluenviron/mediamtx:1.14.0
     build: ./mediamtx
     ports:
       # RTMP (incoming video) port
