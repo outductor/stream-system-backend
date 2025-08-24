@@ -52,7 +52,6 @@ func (m *Manager) Run() {
 		case client := <-m.register:
 			m.mu.Lock()
 			m.clients[client.ID] = client
-			count := len(m.clients)
 			m.mu.Unlock()
 			
 			// Send current viewer count to all clients
@@ -63,7 +62,6 @@ func (m *Manager) Run() {
 			if _, ok := m.clients[client.ID]; ok {
 				delete(m.clients, client.ID)
 				close(client.Send)
-				count := len(m.clients)
 				m.mu.Unlock()
 				
 				// Send updated viewer count to all clients
