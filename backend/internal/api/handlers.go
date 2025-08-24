@@ -212,13 +212,13 @@ func (h *Handler) GetAvailableSlots(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(apiSlots)
+	_ = json.NewEncoder(w).Encode(apiSlots)
 }
 
 func (h *Handler) sendError(w http.ResponseWriter, statusCode int, code, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
-	json.NewEncoder(w).Encode(Error{
+	_ = json.NewEncoder(w).Encode(Error{
 		Code:    ErrorCode(code),
 		Message: message,
 	})
