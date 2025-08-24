@@ -247,7 +247,7 @@ export function ReservationForm({ onClose, onSuccess, defaultStartInstant }: Res
               onChange={(e) => setDjName(e.target.value)}
               maxLength={100}
               required
-              placeholder="DJ名を入力（絵文字使用可）"
+              placeholder="お名前や意気込みをどうぞ（絵文字使用可）"
             />
           </div>
 
