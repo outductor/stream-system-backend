@@ -7,23 +7,38 @@ import (
 
 	"github.com/dj-event/stream-system/internal/config"
 	"github.com/dj-event/stream-system/internal/db"
+	"github.com/dj-event/stream-system/internal/websocket"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	gorillaWs "github.com/gorilla/websocket"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 	"github.com/sirupsen/logrus"
 )
 
 type Handler struct {
-	db     *db.DB
-	logger *logrus.Logger
-	config *config.Config
+	db        *db.DB
+	logger    *logrus.Logger
+	config    *config.Config
+	wsManager *websocket.Manager
+	upgrader  gorillaWs.Upgrader
 }
 
 func NewHandler(database *db.DB, logger *logrus.Logger, cfg *config.Config) *Handler {
+	wsManager := websocket.NewManager(logger)
+	go wsManager.Run()
+	
 	return &Handler{
-		db:     database,
-		logger: logger,
-		config: cfg,
+		db:        database,
+		logger:    logger,
+		config:    cfg,
+		wsManager: wsManager,
+		upgrader: gorillaWs.Upgrader{
+			CheckOrigin: func(r *http.Request) bool {
+				// Allow all origins in development
+				// In production, you should check the origin
+				return true
+			},
+		},
 	}
 }
 
@@ -37,8 +52,11 @@ func (h *Handler) GetStreamStatus(w http.ResponseWriter, r *http.Request) {
 	// Check if stream is live by checking HLS file exists and is recent
 	isLive := h.checkStreamIsLive()
 
+	viewerCount := h.wsManager.GetViewerCount()
+	
 	status := StreamStatus{
-		IsLive: isLive,
+		IsLive:      isLive,
+		ViewerCount: &viewerCount,
 	}
 
 	if currentNext.CurrentDJName != nil {

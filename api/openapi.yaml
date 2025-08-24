@@ -165,6 +165,9 @@ components:
         isLive:
           type: boolean
           description: Whether stream is currently live
+        viewerCount:
+          type: integer
+          description: Number of current viewers
         currentDj:
           type: string
           description: Name of current DJ (null if no one is scheduled)
