@@ -54,7 +54,6 @@ func (m *Manager) Run() {
 			m.clients[client.ID] = client
 			count := len(m.clients)
 			m.mu.Unlock()
-			m.logger.Infof("Client %s connected. Total viewers: %d", client.ID, count)
 			
 			// Send current viewer count to all clients
 			m.broadcastViewerCount()
@@ -66,7 +65,6 @@ func (m *Manager) Run() {
 				close(client.Send)
 				count := len(m.clients)
 				m.mu.Unlock()
-				m.logger.Infof("Client %s disconnected. Total viewers: %d", client.ID, count)
 				
 				// Send updated viewer count to all clients
 				m.broadcastViewerCount()
