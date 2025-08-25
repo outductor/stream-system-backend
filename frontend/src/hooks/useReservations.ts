@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { reservationsApi } from '../api/client';
 import type { Reservation } from '../types/api';
 
-export function useReservations(date?: string, refreshInterval = 60000) {
+export function useReservations(date?: string, refreshInterval = 30000) {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);

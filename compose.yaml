@@ -9,6 +9,10 @@ services:
       - frontend
       - backend
       - mediamtx
+    networks:
+      - frontend
+      - backend
+      - streaming
     restart: unless-stopped
 
   frontend:
@@ -21,6 +25,8 @@ services:
         - VITE_HLS_ENDPOINT=${PRODUCTION_DOMAIN:-http://localhost}/hls/stream-endpoint/index.m3u8
     environment:
       - NODE_ENV=production
+    networks:
+      - frontend
     restart: unless-stopped
 
   postgres:
@@ -35,6 +41,8 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./backend/db/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    networks:
+      - database
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -61,6 +69,9 @@ services:
       EVENT_TIMEZONE: ${EVENT_TIMEZONE:-Asia/Tokyo}
     volumes:
       - ./media:/app/media
+    networks:
+      - backend
+      - database
     depends_on:
       postgres:
         condition: service_healthy
@@ -70,6 +81,23 @@ services:
     ports:
       # RTMP (incoming video) port
       - "19350:1935"
+    networks:
+      - streaming
+
+networks:
+  frontend:
+    driver: bridge
+    name: dsr-frontend
+  backend:
+    driver: bridge
+    name: dsr-backend
+  database:
+    driver: bridge
+    internal: true
+    name: dsr-database
+  streaming:
+    driver: bridge
+    name: dsr-streaming
 
 volumes:
   postgres_data:

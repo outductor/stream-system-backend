@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { streamApi } from '../api/client';
 import type { StreamStatus } from '../types/api';
 
-export function useStreamStatus(refreshInterval = 30000) {
+export function useStreamStatus(refreshInterval = 10000) {
   const [status, setStatus] = useState<StreamStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
