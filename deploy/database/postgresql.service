@@ -1,0 +1,24 @@
+[Unit]
+Description=PostgreSQL database for DSR (DJ Event Streaming System)
+After=network.target
+
+[Service]
+Type=notify
+User=postgres
+Group=postgres
+Environment="PGDATA=/var/lib/postgresql/17/main"
+ExecStartPre=/usr/lib/postgresql/17/bin/postgresql-check-db-dir ${PGDATA}
+ExecStart=/usr/lib/postgresql/17/bin/postgres -D ${PGDATA}
+ExecReload=/bin/kill -HUP $MAINPID
+KillMode=mixed
+KillSignal=SIGINT
+TimeoutSec=0
+
+# Security settings
+ProtectSystem=full
+ProtectHome=true
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

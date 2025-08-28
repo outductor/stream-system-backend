@@ -1,0 +1,26 @@
+# PostgreSQL Client Authentication Configuration
+# Example configuration for DSR database
+
+# TYPE  DATABASE        USER            ADDRESS                 METHOD
+
+# Local connections
+local   all             postgres                                peer
+local   all             all                                     peer
+
+# IPv4 local connections:
+host    all             all             127.0.0.1/32            scram-sha-256
+
+# IPv4 connections from backend servers (update with your backend IPs)
+host    dsr             dsr             10.0.0.0/24             scram-sha-256
+host    dsr             dsr             192.168.1.0/24          scram-sha-256
+
+# Example for specific backend servers
+# host    dsr             dsr             10.0.0.10/32            scram-sha-256
+# host    dsr             dsr             10.0.0.11/32            scram-sha-256
+
+# IPv6 local connections:
+host    all             all             ::1/128                 scram-sha-256
+
+# Reject all other connections
+host    all             all             0.0.0.0/0               reject
+host    all             all             ::/0                    reject

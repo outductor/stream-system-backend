@@ -1,0 +1,59 @@
+###############################################
+# MediaMTX configuration for DSR streaming
+
+###############################################
+# Global settings
+
+# Log level
+logLevel: info
+
+# API settings
+api: yes
+apiAddress: :9997
+
+# Metrics
+metrics: yes
+metricsAddress: :9998
+
+# RTMP settings
+rtmp: yes
+rtmpAddress: :19350
+rtmpEncryption: "no"
+
+# HLS settings  
+hls: yes
+hlsAddress: :8888
+hlsAllowOrigin: "*"
+hlsAlwaysRemux: no
+hlsSegmentCount: 5
+hlsSegmentDuration: 2s
+hlsPartDuration: 200ms
+hlsSegmentMaxSize: 50M
+
+# WebRTC settings (disabled for this setup)
+webrtc: no
+
+###############################################
+# Path settings
+
+paths:
+  # Main streaming path
+  stream:
+    # Accept publishing via RTMP
+    source: publisher
+    
+    # Recording settings (optional)
+    record: no
+    recordPath: ./recordings/%path/%Y-%m-%d_%H-%M-%S.mp4
+    recordSegmentDuration: 1h
+    recordDeleteAfter: 24h
+    
+    # Authentication (optional - uncomment to enable)
+    # publishUser: myuser
+    # publishPass: mypass
+    # publishIPs: [127.0.0.1/32]
+    
+    # Reader authentication (optional)
+    # readUser: viewer
+    # readPass: viewpass
+    # readIPs: []

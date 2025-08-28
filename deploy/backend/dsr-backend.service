@@ -1,0 +1,38 @@
+[Unit]
+Description=DSR Backend API (DJ Event Streaming System)
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=dsr
+Group=dsr
+WorkingDirectory=/opt/dsr/backend
+ExecStart=/opt/dsr/backend/dsr-backend
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=dsr-backend
+
+# Environment variables
+Environment="GIN_MODE=release"
+Environment="PORT=8080"
+Environment="DB_HOST=localhost"
+Environment="DB_PORT=5432"
+Environment="DB_NAME=dsr"
+Environment="DB_USER=dsr"
+Environment="DB_PASSWORD=changeme"
+Environment="EVENT_START_TIME=18:00"
+Environment="EVENT_END_TIME=24:00"
+Environment="EVENT_TIMEZONE=UTC"
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/dsr/backend/logs
+
+[Install]
+WantedBy=multi-user.target

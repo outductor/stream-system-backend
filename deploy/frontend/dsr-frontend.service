@@ -1,0 +1,20 @@
+[Unit]
+Description=DSR Frontend (DJ Event Streaming System)
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/dsr/frontend
+ExecStart=/usr/bin/node /opt/dsr/frontend/server.js
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=dsr-frontend
+Environment="NODE_ENV=production"
+Environment="PORT=3000"
+
+[Install]
+WantedBy=multi-user.target

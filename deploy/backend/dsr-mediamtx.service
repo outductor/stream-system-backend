@@ -1,0 +1,25 @@
+[Unit]
+Description=DSR MediaMTX Streaming Server
+After=network.target
+
+[Service]
+Type=simple
+User=mediamtx
+Group=mediamtx
+WorkingDirectory=/opt/dsr/mediamtx
+ExecStart=/opt/dsr/mediamtx/mediamtx /opt/dsr/mediamtx/mediamtx.yml
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=dsr-mediamtx
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/dsr/mediamtx/recordings
+
+[Install]
+WantedBy=multi-user.target
