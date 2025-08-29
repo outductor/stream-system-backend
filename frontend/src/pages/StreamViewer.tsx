@@ -37,6 +37,20 @@ export function StreamViewer() {
     return dateString.toZonedDateTimeISO(Temporal.Now.timeZoneId()).toPlainTime().toString({ smallestUnit: 'minute' });
   };
 
+  const formatDateTimeWithCheck = (dateString: Temporal.Instant) => {
+    const zdt = dateString.toZonedDateTimeISO(Temporal.Now.timeZoneId());
+    const now = Temporal.Now.zonedDateTimeISO(Temporal.Now.timeZoneId());
+    const date = zdt.toPlainDate();
+    const time = zdt.toPlainTime();
+
+    // 同じ日の場合は時刻のみ、異なる日の場合は日付も表示
+    if (Temporal.PlainDate.compare(date, now.toPlainDate()) === 0) {
+      return time.toString({ smallestUnit: 'minute' });
+    } else {
+      return `${date.month}/${date.day} ${time.toString({ smallestUnit: 'minute' })}`;
+    }
+  };
+
   return (
     <div className="stream-viewer">
       <h1>DSR2025 DJブース ライブ配信</h1>
@@ -115,7 +129,7 @@ export function StreamViewer() {
           <div className="offline-message">
             <p>現在配信はオフラインです</p>
             {status.nextDj && status.nextStartTime && (
-              <p>次の配信は {formatTime(status.nextStartTime)} から始まります</p>
+              <p>次の配信は {formatDateTimeWithCheck(status.nextStartTime)} から始まります</p>
             )}
           </div>
         )}
