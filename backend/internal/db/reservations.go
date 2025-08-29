@@ -190,7 +190,7 @@ func (db *DB) GetReservationsInRange(startTime, endTime time.Time) ([]Reservatio
 		ORDER BY start_time
 	`
 	
-	err := db.Select(&reservations, query, startTime, endTime)
+	err := db.Select(&reservations, query, startTime.In(time.UTC), endTime.In(time.UTC))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get reservations in range: %w", err)
 	}
