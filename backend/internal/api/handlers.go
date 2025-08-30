@@ -26,7 +26,7 @@ type Handler struct {
 func NewHandler(database *db.DB, logger *logrus.Logger, cfg *config.Config) *Handler {
 	wsManager := websocket.NewManager(logger)
 	go wsManager.Run()
-	
+
 	return &Handler{
 		db:        database,
 		logger:    logger,
@@ -53,7 +53,7 @@ func (h *Handler) GetStreamStatus(w http.ResponseWriter, r *http.Request) {
 	isLive := h.checkStreamIsLive()
 
 	viewerCount := h.wsManager.GetViewerCount()
-	
+
 	status := StreamStatus{
 		IsLive:      isLive,
 		ViewerCount: &viewerCount,
@@ -206,15 +206,15 @@ func (h *Handler) DeleteReservation(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) GetEventConfig(w http.ResponseWriter, r *http.Request) {
 	config := EventConfig{}
-	
+
 	if h.config.EventStartTime != nil {
 		config.EventStartTime = h.config.EventStartTime
 	}
-	
+
 	if h.config.EventEndTime != nil {
 		config.EventEndTime = h.config.EventEndTime
 	}
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(config)
 }
@@ -301,7 +301,7 @@ func (h *Handler) checkStreamIsLive() bool {
 	client := &http.Client{
 		Timeout: 2 * time.Second,
 	}
-	
+
 	// Request through Nginx (internal Docker network)
 	resp, err := client.Get("http://nginx/hls/stream-endpoint/index.m3u8")
 	if err != nil {
@@ -309,7 +309,7 @@ func (h *Handler) checkStreamIsLive() bool {
 		return false
 	}
 	defer resp.Body.Close()
-	
+
 	// If we get 200 OK, stream is live
 	return resp.StatusCode == http.StatusOK
 }

@@ -8,9 +8,9 @@ import (
 )
 
 type Config struct {
-	Server       ServerConfig
-	Database     DatabaseConfig
-	LogLevel     string
+	Server         ServerConfig
+	Database       DatabaseConfig
+	LogLevel       string
 	EventStartTime *time.Time
 	EventEndTime   *time.Time
 }

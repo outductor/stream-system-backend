@@ -10,14 +10,14 @@ import (
 
 func (db *DB) GetReservations() ([]Reservation, error) {
 	var reservations []Reservation
-	
+
 	// Get all reservations ordered by start time
 	query := `
 		SELECT id, dj_name, start_time, end_time, passcode, created_at
 		FROM reservations
 		ORDER BY start_time
 	`
-	
+
 	err := db.Select(&reservations, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get reservations: %w", err)
@@ -138,7 +138,7 @@ func (db *DB) GetAvailableSlotsInRange(startTime, endTime time.Time) ([]TimeSlot
 	}
 
 	slots := []TimeSlot{}
-	
+
 	// Round startTime down to the nearest 15-minute interval
 	startMinutes := startTime.Minute()
 	roundedStart := startTime.Truncate(time.Hour).Add(time.Duration(startMinutes/15*15) * time.Minute)
@@ -147,11 +147,11 @@ func (db *DB) GetAvailableSlotsInRange(startTime, endTime time.Time) ([]TimeSlot
 	}
 
 	currentTime := roundedStart
-	
+
 	// Generate 15-minute slots from the rounded start time to end time
 	for currentTime.Before(endTime) {
 		slotEnd := currentTime.Add(15 * time.Minute)
-		
+
 		// Only include slots that start at or after the original startTime
 		if currentTime.Before(startTime) {
 			currentTime = slotEnd
@@ -182,14 +182,14 @@ func (db *DB) GetAvailableSlotsInRange(startTime, endTime time.Time) ([]TimeSlot
 
 func (db *DB) GetReservationsInRange(startTime, endTime time.Time) ([]Reservation, error) {
 	var reservations []Reservation
-	
+
 	query := `
 		SELECT id, dj_name, start_time, end_time, passcode, created_at
 		FROM reservations
 		WHERE start_time < $2 AND end_time > $1
 		ORDER BY start_time
 	`
-	
+
 	err := db.Select(&reservations, query, startTime.In(time.UTC), endTime.In(time.UTC))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get reservations in range: %w", err)

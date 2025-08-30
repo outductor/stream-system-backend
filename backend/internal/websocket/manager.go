@@ -1,7 +1,9 @@
 package websocket
 
 import (
+	"net"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -11,11 +13,11 @@ import (
 )
 
 type Client struct {
-	ID         string
-	Conn       *websocket.Conn
-	Manager    *Manager
-	Send       chan []byte
-	LastPing   time.Time
+	ID       string
+	Conn     *websocket.Conn
+	Manager  *Manager
+	Send     chan []byte
+	LastPing time.Time
 }
 
 type Manager struct {
@@ -53,7 +55,7 @@ func (m *Manager) Run() {
 			m.mu.Lock()
 			m.clients[client.ID] = client
 			m.mu.Unlock()
-			
+
 			// Send current viewer count to all clients
 			m.broadcastViewerCount()
 
@@ -63,7 +65,7 @@ func (m *Manager) Run() {
 				delete(m.clients, client.ID)
 				close(client.Send)
 				m.mu.Unlock()
-				
+
 				// Send updated viewer count to all clients
 				m.broadcastViewerCount()
 			} else {
@@ -86,7 +88,7 @@ func (m *Manager) GetViewerCount() int {
 func (m *Manager) broadcastViewerCount() {
 	count := m.GetViewerCount()
 	message := []byte(`{"type":"viewer_count","count":` + strconv.Itoa(count) + `}`)
-	
+
 	m.mu.RLock()
 	clients := make([]*Client, 0, len(m.clients))
 	for _, client := range m.clients {
@@ -158,7 +160,7 @@ func (c *Client) ReadPump() {
 			}
 			break
 		}
-		
+
 		// Handle pong messages
 		if string(message) == `{"type":"pong"}` {
 			c.LastPing = time.Now()
@@ -182,7 +184,11 @@ func (c *Client) WritePump() {
 			}
 			if !ok {
 				if err := c.Conn.WriteMessage(websocket.CloseMessage, []byte{}); err != nil {
-					c.Manager.logger.Errorf("Failed to write close message: %v", err)
+					if isExpectedCloseError(err) {
+						c.Manager.logger.Debugf("Connection already closed: %v", err)
+					} else {
+						c.Manager.logger.Errorf("Failed to write close message: %v", err)
+					}
 				}
 				return
 			}
@@ -201,4 +207,37 @@ func (c *Client) WritePump() {
 			}
 		}
 	}
+}
+
+// isExpectedCloseError checks if the error is an expected connection close error
+func isExpectedCloseError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	errStr := err.Error()
+
+	// Check for common "connection already closed" errors
+	if strings.Contains(errStr, "use of closed network connection") ||
+		strings.Contains(errStr, "connection reset by peer") ||
+		strings.Contains(errStr, "broken pipe") {
+		return true
+	}
+
+	// Check for WebSocket close errors
+	if websocket.IsCloseError(err,
+		websocket.CloseGoingAway,
+		websocket.CloseAbnormalClosure,
+		websocket.CloseNormalClosure) {
+		return true
+	}
+
+	// Check for net.OpError (network operation errors)
+	if netErr, ok := err.(*net.OpError); ok {
+		if netErr.Op == "write" {
+			return true
+		}
+	}
+
+	return false
 }

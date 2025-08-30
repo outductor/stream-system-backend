@@ -1,8 +1,8 @@
 package db
 
 import (
-	"time"
 	"github.com/google/uuid"
+	"time"
 )
 
 type Reservation struct {
@@ -32,10 +32,10 @@ type ViewerStats struct {
 }
 
 type CurrentNextDJ struct {
-	CurrentDJName      *string    `db:"current_dj_name"`
-	CurrentStartTime   *time.Time `db:"current_start_time"`
-	CurrentEndTime     *time.Time `db:"current_end_time"`
-	NextDJName         *string    `db:"next_dj_name"`
-	NextStartTime      *time.Time `db:"next_start_time"`
-	NextEndTime        *time.Time `db:"next_end_time"`
+	CurrentDJName    *string    `db:"current_dj_name"`
+	CurrentStartTime *time.Time `db:"current_start_time"`
+	CurrentEndTime   *time.Time `db:"current_end_time"`
+	NextDJName       *string    `db:"next_dj_name"`
+	NextStartTime    *time.Time `db:"next_start_time"`
+	NextEndTime      *time.Time `db:"next_end_time"`
 }
