@@ -299,7 +299,7 @@ func (h *Handler) sendError(w http.ResponseWriter, statusCode int, code, message
 func (h *Handler) checkStreamIsLive() bool {
 	// Check if stream is live by requesting HLS manifest through Nginx
 	client := &http.Client{
-		Timeout: 2 * time.Second,
+		Timeout: 1500 * time.Millisecond,
 	}
 
 	// Request through Nginx (internal Docker network)
