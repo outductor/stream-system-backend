@@ -243,7 +243,9 @@ func (h *Handler) DeleteReservation(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetEventConfig(w http.ResponseWriter, r *http.Request) {
-	config := EventConfig{}
+	config := EventConfig{
+		Timezone: h.config.EventTimezone,
+	}
 
 	if h.config.EventStartTime != nil {
 		config.EventStartTime = h.config.EventStartTime

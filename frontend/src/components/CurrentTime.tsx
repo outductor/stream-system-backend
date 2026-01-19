@@ -1,16 +1,18 @@
 import { useState, useEffect } from 'react';
 import { Temporal } from 'temporal-polyfill';
+import { useEventTimezone } from '../hooks/useEventTimezone';
 
 export function CurrentTime() {
-  const [currentTime, setCurrentTime] = useState(Temporal.Now.zonedDateTimeISO(Temporal.Now.timeZoneId()));
+  const timezone = useEventTimezone();
+  const [currentTime, setCurrentTime] = useState(Temporal.Now.zonedDateTimeISO(timezone));
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setCurrentTime(Temporal.Now.zonedDateTimeISO(Temporal.Now.timeZoneId()));
+      setCurrentTime(Temporal.Now.zonedDateTimeISO(timezone));
     }, 1000);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [timezone]);
 
   const formatDateTime = (dateTime: Temporal.ZonedDateTime): string => {
     const weekdays = ['日', '月', '火', '水', '木', '金', '土'];

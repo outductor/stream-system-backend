@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Temporal } from 'temporal-polyfill';
 import { useReservations } from '../hooks/useReservations';
+import { useEventTimezone } from '../hooks/useEventTimezone';
 import type { Reservation, EventConfig } from '../types/api';
 import { CurrentTime } from '../components/CurrentTime';
 import { TimeSlotGrid } from '../components/TimeSlotGrid';
@@ -11,6 +12,7 @@ import { configApi } from '../api/client';
 type DateSelection = 'any' | string; // 'any' or ISO date string like '2025-08-29'
 
 export function Timetable() {
+  const timezone = useEventTimezone();
   const [selectedDate, setSelectedDate] = useState<DateSelection>('any');
   const [showReservationForm, setShowReservationForm] = useState(false);
   const [reservationFormDefaultInstant, setReservationFormDefaultInstant] = useState<Temporal.Instant | null>(null);
@@ -23,8 +25,8 @@ export function Timetable() {
   }, []);
 
   const formatDateTimeWithCrossDay = (reservation: Reservation, currentDate: Temporal.PlainDate) => {
-    const startZoned = reservation.startTime.toZonedDateTimeISO(Temporal.Now.timeZoneId());
-    const endZoned = reservation.endTime.toZonedDateTimeISO(Temporal.Now.timeZoneId());
+    const startZoned = reservation.startTime.toZonedDateTimeISO(timezone);
+    const endZoned = reservation.endTime.toZonedDateTimeISO(timezone);
     const startDate = startZoned.toPlainDate();
     const endDate = endZoned.toPlainDate();
     
@@ -68,8 +70,8 @@ export function Timetable() {
     reservationList.forEach(reservation => {
       const startInstant = Temporal.Instant.from(reservation.startTime);
       const endInstant = Temporal.Instant.from(reservation.endTime);
-      const startZonedDateTime = startInstant.toZonedDateTimeISO(Temporal.Now.timeZoneId());
-      const endZonedDateTime = endInstant.toZonedDateTimeISO(Temporal.Now.timeZoneId());
+      const startZonedDateTime = startInstant.toZonedDateTimeISO(timezone);
+      const endZonedDateTime = endInstant.toZonedDateTimeISO(timezone);
       const startDate = startZonedDateTime.toPlainDate();
       const endDate = endZonedDateTime.toPlainDate();
       
@@ -123,12 +125,12 @@ export function Timetable() {
   const generateEventDays = (): Temporal.PlainDate[] => {
     if (!eventConfig?.eventStartTime || !eventConfig?.eventEndTime) {
       // フォールバック: 今日から3日間
-      const today = Temporal.Now.plainDateISO('Asia/Tokyo');
+      const today = Temporal.Now.zonedDateTimeISO(timezone).toPlainDate();
       return [today, today.add({ days: 1 }), today.add({ days: 2 })];
     }
 
-    const startDate = eventConfig.eventStartTime.toZonedDateTimeISO('Asia/Tokyo').toPlainDate();
-    const endDate = eventConfig.eventEndTime.toZonedDateTimeISO('Asia/Tokyo').toPlainDate();
+    const startDate = eventConfig.eventStartTime.toZonedDateTimeISO(timezone).toPlainDate();
+    const endDate = eventConfig.eventEndTime.toZonedDateTimeISO(timezone).toPlainDate();
     
     const days: Temporal.PlainDate[] = [];
     let currentDate = startDate;
@@ -251,11 +253,16 @@ export function Timetable() {
         {daysSelected.map(date => (
           <div key={date.toString()} className="date-slots">
             <h3>{formatDateHeader(date)}</h3>
-            <TimeSlotGrid 
-              date={date} 
-              reservations={reservations.filter(r =>
-                r.startTime.toZonedDateTimeISO(Temporal.Now.timeZoneId()).toPlainDate().equals(date)
-              )}
+            <TimeSlotGrid
+              date={date}
+              reservations={reservations.filter(r => {
+                const startDate = r.startTime.toZonedDateTimeISO(timezone).toPlainDate();
+                // Start of this date as Instant for exclusive end comparison
+                const dayStart = date.toZonedDateTime(timezone).toInstant();
+                // Include if: startDate <= date AND endTime > dayStart (exclusive end)
+                return Temporal.PlainDate.compare(startDate, date) <= 0 &&
+                       Temporal.Instant.compare(r.endTime, dayStart) > 0;
+              })}
               onSlotClick={handleSlotClick}
             />
           </div>

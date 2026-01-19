@@ -13,6 +13,7 @@ type Config struct {
 	LogLevel       string
 	EventStartTime *time.Time
 	EventEndTime   *time.Time
+	EventTimezone  string
 }
 
 type ServerConfig struct {
@@ -52,6 +53,7 @@ func Load() (*Config, error) {
 	if tzErr != nil {
 		return nil, fmt.Errorf("invalid EVENT_TIMEZONE: %v", tzErr)
 	}
+	cfg.EventTimezone = tzStr
 
 	// Load EVENT_START_TIME if specified
 	// Only supports "YYYY-MM-DD HH:MM:SS" format

@@ -2,10 +2,12 @@ import { Temporal } from 'temporal-polyfill';
 import { HLSPlayer } from '../components/HLSPlayer';
 import { useStreamStatus } from '../hooks/useStreamStatus';
 import { useViewerCount } from '../hooks/useViewerCount';
+import { useEventTimezone } from '../hooks/useEventTimezone';
 
 const HLS_ENDPOINT = import.meta.env.VITE_HLS_ENDPOINT || 'http://localhost:8888/hls/stream';
 
 export function StreamViewer() {
+  const timezone = useEventTimezone();
   const { status, loading, error } = useStreamStatus();
   const { viewerCount } = useViewerCount();
 
@@ -34,12 +36,12 @@ export function StreamViewer() {
   }
 
   const formatTime = (dateString: Temporal.Instant) => {
-    return dateString.toZonedDateTimeISO(Temporal.Now.timeZoneId()).toPlainTime().toString({ smallestUnit: 'minute' });
+    return dateString.toZonedDateTimeISO(timezone).toPlainTime().toString({ smallestUnit: 'minute' });
   };
 
   const formatDateTimeWithCheck = (dateString: Temporal.Instant) => {
-    const zdt = dateString.toZonedDateTimeISO(Temporal.Now.timeZoneId());
-    const now = Temporal.Now.zonedDateTimeISO(Temporal.Now.timeZoneId());
+    const zdt = dateString.toZonedDateTimeISO(timezone);
+    const now = Temporal.Now.zonedDateTimeISO(timezone);
     const date = zdt.toPlainDate();
     const time = zdt.toPlainTime();
 
@@ -113,7 +115,7 @@ export function StreamViewer() {
           <div className="next-dj">
             <h3>次のDJ: {status.nextDj}</h3>
             <p className="time-info">開始時刻: {(() => {
-              const zdt = status.nextStartTime.toZonedDateTimeISO(Temporal.Now.timeZoneId());
+              const zdt = status.nextStartTime.toZonedDateTimeISO(timezone);
               const date = zdt.toPlainDate();
               const time = zdt.toPlainTime();
               return `${date.month}/${date.day} ${time.toString({ smallestUnit: 'minute' })}`;

@@ -283,6 +283,8 @@ components:
 
     EventConfig:
       type: object
+      required:
+        - timezone
       properties:
         eventStartTime:
           type: string
@@ -292,3 +294,7 @@ components:
           type: string
           format: date-time
           description: Event end time (can be null if not configured)
+        timezone:
+          type: string
+          description: IANA timezone identifier for the event (e.g., "Asia/Tokyo")
+          example: "Asia/Tokyo"

@@ -104,16 +104,19 @@ export interface ApiError {
 export interface EventConfig {
   eventStartTime?: Temporal.Instant;
   eventEndTime?: Temporal.Instant;
+  timezone: string;
 }
 
 export interface EventConfigResponse {
   eventStartTime?: string;
   eventEndTime?: string;
+  timezone: string;
 }
 
 export const buildEventConfig = (plainData: EventConfigResponse): EventConfig => {
   return {
     eventStartTime: plainData.eventStartTime ? Temporal.Instant.from(plainData.eventStartTime) : undefined,
     eventEndTime: plainData.eventEndTime ? Temporal.Instant.from(plainData.eventEndTime) : undefined,
+    timezone: plainData.timezone,
   };
 };

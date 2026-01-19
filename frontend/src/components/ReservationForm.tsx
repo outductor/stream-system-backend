@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Temporal } from 'temporal-polyfill';
 import { reservationsApi, configApi } from '../api/client';
+import { useEventTimezone } from '../hooks/useEventTimezone';
 import type { TimeSlot, EventConfig } from '../types/api';
 
 interface ReservationFormProps {
@@ -10,8 +11,17 @@ interface ReservationFormProps {
 }
 
 export function ReservationForm({ onClose, onSuccess, defaultStartInstant }: ReservationFormProps) {
-  const [selectedDate, setSelectedDate] = useState(defaultStartInstant?.toZonedDateTimeISO(Temporal.Now.timeZoneId())?.toPlainDate());
-  const [selectedStartTime, setSelectedStartTime] = useState(defaultStartInstant?.toZonedDateTimeISO(Temporal.Now.timeZoneId())?.toPlainTime());
+  const timezone = useEventTimezone();
+  const [selectedDate, setSelectedDate] = useState<Temporal.PlainDate | undefined>();
+  const [selectedStartTime, setSelectedStartTime] = useState<Temporal.PlainTime | undefined>();
+
+  // Initialize selected date/time from default when timezone is available
+  useEffect(() => {
+    if (defaultStartInstant) {
+      setSelectedDate(defaultStartInstant.toZonedDateTimeISO(timezone).toPlainDate());
+      setSelectedStartTime(defaultStartInstant.toZonedDateTimeISO(timezone).toPlainTime());
+    }
+  }, [defaultStartInstant, timezone]);
 
   const [djName, setDjName] = useState('');
   const [duration, setDuration] = useState(60);
@@ -29,9 +39,9 @@ export function ReservationForm({ onClose, onSuccess, defaultStartInstant }: Res
   // Initialize with first event date
   useEffect(() => {
     if (!selectedDate && eventConfig?.eventStartTime) {
-      setSelectedDate(eventConfig.eventStartTime.toZonedDateTimeISO('Asia/Tokyo').toPlainDate());
+      setSelectedDate(eventConfig.eventStartTime.toZonedDateTimeISO(timezone).toPlainDate());
     }
-  }, [selectedDate, eventConfig]);
+  }, [selectedDate, eventConfig, timezone]);
 
   // Fetch available slots when event config is loaded
   useEffect(() => {
@@ -61,8 +71,8 @@ export function ReservationForm({ onClose, onSuccess, defaultStartInstant }: Res
     
     if (eventConfig?.eventStartTime && eventConfig?.eventEndTime) {
       // Use event period
-      const startDate = eventConfig.eventStartTime.toZonedDateTimeISO('Asia/Tokyo').toPlainDate();
-      const endDate = eventConfig.eventEndTime.toZonedDateTimeISO('Asia/Tokyo').toPlainDate();
+      const startDate = eventConfig.eventStartTime.toZonedDateTimeISO(timezone).toPlainDate();
+      const endDate = eventConfig.eventEndTime.toZonedDateTimeISO(timezone).toPlainDate();
       
       let currentDate = startDate;
       while (Temporal.PlainDate.compare(currentDate, endDate) <= 0) {
@@ -94,12 +104,12 @@ export function ReservationForm({ onClose, onSuccess, defaultStartInstant }: Res
     
     const times: { value: Temporal.PlainTime; label: string; available: boolean }[] = [];
     const selectedPlainDate = Temporal.PlainDate.from(selectedDate);
-    const now = Temporal.Now.plainDateTimeISO(Temporal.Now.timeZoneId());
-    const today = Temporal.Now.plainDateISO(Temporal.Now.timeZoneId());
+    const now = Temporal.Now.zonedDateTimeISO(timezone).toPlainDateTime();
+    const today = Temporal.Now.zonedDateTimeISO(timezone).toPlainDate();
     
     // Filter slots for the selected date
     const slotsForDate = availableSlots.filter(slot => {
-      const slotDate = slot.startTime.toZonedDateTimeISO(Temporal.Now.timeZoneId()).toPlainDate();
+      const slotDate = slot.startTime.toZonedDateTimeISO(timezone).toPlainDate();
       return slotDate.equals(selectedPlainDate);
     });
     
@@ -114,7 +124,7 @@ export function ReservationForm({ onClose, onSuccess, defaultStartInstant }: Res
         }
         
         // Convert to instant for API compatibility
-        const instant = timeOnDate.toZonedDateTime(Temporal.Now.timeZoneId()).toInstant();
+        const instant = timeOnDate.toZonedDateTime(timezone).toInstant();
         
         // Skip times before event start
         if (eventConfig?.eventStartTime && Temporal.Instant.compare(instant, eventConfig.eventStartTime) < 0) {
@@ -150,7 +160,7 @@ export function ReservationForm({ onClose, onSuccess, defaultStartInstant }: Res
     if (!selectedDate || !selectedStartTime) return [15, 30, 45, 60];
     
     const selectedDateTime = selectedDate.toPlainDateTime(selectedStartTime);
-    const startInstant = selectedDateTime.toZonedDateTime(Temporal.Now.timeZoneId()).toInstant();
+    const startInstant = selectedDateTime.toZonedDateTime(timezone).toInstant();
     
     const durations = [15, 30, 45, 60];
     const availableDurations: number[] = [];
@@ -190,7 +200,7 @@ export function ReservationForm({ onClose, onSuccess, defaultStartInstant }: Res
 
       const startInstant = selectedDate
         .toPlainDateTime(selectedStartTime)
-        .toZonedDateTime(Temporal.Now.timeZoneId()).toInstant();
+        .toZonedDateTime(timezone).toInstant();
       await reservationsApi.createReservation({
         djName,
         startTime: startInstant,
@@ -230,8 +240,6 @@ export function ReservationForm({ onClose, onSuccess, defaultStartInstant }: Res
       setDuration(availableDurations[0]);
     }
   }, [selectedStartTime, availableDurations, duration]);
-
-  console.log(selectedStartTime)
 
   return (
     <div className="reservation-form-overlay" onClick={onClose}>

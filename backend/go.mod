@@ -11,6 +11,7 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/oapi-codegen/runtime v1.1.2
 	github.com/sirupsen/logrus v1.9.3
+	golang.org/x/crypto v0.47.0
 )
 
 require (
@@ -27,8 +28,8 @@ require (
 	github.com/speakeasy-api/jsonpath v0.6.0 // indirect
 	github.com/speakeasy-api/openapi-overlay v0.10.2 // indirect
 	github.com/vmware-labs/yaml-jsonpath v0.3.2 // indirect
-	golang.org/x/crypto v0.47.0 // indirect
 	golang.org/x/mod v0.31.0 // indirect
+	golang.org/x/sync v0.19.0 // indirect
 	golang.org/x/sys v0.40.0 // indirect
 	golang.org/x/text v0.33.0 // indirect
 	golang.org/x/tools v0.40.0 // indirect

@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Temporal } from 'temporal-polyfill';
 import axios from 'axios';
 import { reservationsApi } from '../api/client';
+import { useEventTimezone } from '../hooks/useEventTimezone';
 import type { Reservation } from '../types/api';
 
 interface DeleteConfirmDialogProps {
@@ -11,6 +11,7 @@ interface DeleteConfirmDialogProps {
 }
 
 export function DeleteConfirmDialog({ reservation, onClose, onSuccess }: DeleteConfirmDialogProps) {
+  const timezone = useEventTimezone();
   const [passcode, setPasscode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -41,7 +42,7 @@ export function DeleteConfirmDialog({ reservation, onClose, onSuccess }: DeleteC
         
         <div className="reservation-info">
           <p><strong>DJ名:</strong> {reservation.djName}</p>
-          <p><strong>時間:</strong> {Temporal.Instant.from(reservation.startTime).toZonedDateTimeISO(Temporal.Now.timeZoneId()).toPlainTime().toString({ smallestUnit: 'minute' })} - {Temporal.Instant.from(reservation.endTime).toZonedDateTimeISO(Temporal.Now.timeZoneId()).toPlainTime().toString({ smallestUnit: 'minute' })}</p>
+          <p><strong>時間:</strong> {reservation.startTime.toZonedDateTimeISO(timezone).toPlainTime().toString({ smallestUnit: 'minute' })} - {reservation.endTime.toZonedDateTimeISO(timezone).toPlainTime().toString({ smallestUnit: 'minute' })}</p>
         </div>
 
         <form onSubmit={handleDelete}>

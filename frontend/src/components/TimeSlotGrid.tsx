@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Temporal } from 'temporal-polyfill';
 import { reservationsApi } from '../api/client';
+import { useEventTimezone } from '../hooks/useEventTimezone';
 import type { TimeSlot, Reservation } from '../types/api';
 
 interface TimeSlotGridProps {
@@ -12,17 +13,18 @@ interface TimeSlotGridProps {
 export function TimeSlotGrid({ date, reservations, onSlotClick }: TimeSlotGridProps) {
   const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([]);
   const [loading, setLoading] = useState(true);
+  const timezone = useEventTimezone();
 
   useEffect(() => {
     const fetchSlots = async () => {
       try {
         // Create start time from the beginning of the specified date
         const startOfDate = date.toPlainDateTime({ hour: 0, minute: 0 });
-        const startTime = startOfDate.toZonedDateTime(Temporal.Now.timeZoneId()).toInstant();
-        
+        const startTime = startOfDate.toZonedDateTime(timezone).toInstant();
+
         // Create end time for the end of the specified date
         const endOfDate = date.toPlainDateTime({ hour: 23, minute: 59, second: 59, millisecond: 999 });
-        const endTime = endOfDate.toZonedDateTime(Temporal.Now.timeZoneId()).toInstant();
+        const endTime = endOfDate.toZonedDateTime(timezone).toInstant();
 
         const slots = await reservationsApi.getAvailableSlots(startTime, endTime);
         setAvailableSlots(slots);
@@ -33,13 +35,13 @@ export function TimeSlotGrid({ date, reservations, onSlotClick }: TimeSlotGridPr
       }
     };
     fetchSlots();
-  }, [date, reservations]);
+  }, [date, reservations, timezone]);
 
   const findReservationForSlot =
-    (slot: TimeSlot): Reservation | undefined =>
+    (slotInstant: Temporal.Instant): Reservation | undefined =>
       reservations.find(r =>
-        Temporal.Instant.compare(slot.startTime, r.startTime) >= 0 &&
-        Temporal.Instant.compare(slot.startTime, r.endTime) < 0
+        Temporal.Instant.compare(slotInstant, r.startTime) >= 0 &&
+        Temporal.Instant.compare(slotInstant, r.endTime) < 0
       );
 
   const generateTimeSlots = () => {
@@ -52,10 +54,10 @@ export function TimeSlotGrid({ date, reservations, onSlotClick }: TimeSlotGridPr
       
       for (const minute of [0, 15, 30, 45]) {
         const slotTime = plainDate.toPlainDateTime({ hour, minute });
-        const slotInstant = slotTime.toZonedDateTime(Temporal.Now.timeZoneId()).toInstant();
+        const slotInstant = slotTime.toZonedDateTime(timezone).toInstant();
         
         const slot = availableSlots.find(s => s.startTime.equals(slotInstant));
-        const reservation = slot ? findReservationForSlot(slot) : undefined;
+        const reservation = findReservationForSlot(slotInstant);
         const isPast = Temporal.Instant.compare(slotInstant, now) <= 0;
         const isAvailable = slot?.available && !isPast;
 
