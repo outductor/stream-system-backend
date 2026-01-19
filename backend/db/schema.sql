@@ -2,20 +2,21 @@
 
 -- Enable required extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 CREATE EXTENSION IF NOT EXISTS "btree_gist";
 
 -- Reservations table
 CREATE TABLE IF NOT EXISTS reservations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     dj_name VARCHAR(100) NOT NULL,
-    start_time TIMESTAMP NOT NULL,
-    end_time TIMESTAMP NOT NULL,
-    passcode CHAR(4) NOT NULL CHECK (passcode ~ '^[0-9]{4}$'),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    start_time TIMESTAMPTZ NOT NULL,
+    end_time TIMESTAMPTZ NOT NULL,
+    passcode VARCHAR(60) NOT NULL,  -- bcrypt hash
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     
     -- Ensure no overlapping reservations
     CONSTRAINT no_overlap EXCLUDE USING gist (
-        tsrange(start_time, end_time) WITH &&
+        tstzrange(start_time, end_time) WITH &&
     ),
     
     -- Ensure start_time is before end_time

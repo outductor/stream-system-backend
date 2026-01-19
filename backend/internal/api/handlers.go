@@ -3,7 +3,10 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"regexp"
+	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/dj-event/stream-system/internal/config"
 	"github.com/dj-event/stream-system/internal/db"
@@ -111,10 +114,29 @@ func (h *Handler) GetReservations(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(apiReservations)
 }
 
+var passcodePattern = regexp.MustCompile(`^[0-9]{4}$`)
+
 func (h *Handler) CreateReservation(w http.ResponseWriter, r *http.Request) {
 	var req CreateReservationRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		h.sendError(w, http.StatusBadRequest, "INVALID_REQUEST", "Invalid request body")
+		return
+	}
+
+	// Validate DJ name (1-100 characters, rune-based for emoji support)
+	djNameLen := utf8.RuneCountInString(req.DjName)
+	if djNameLen == 0 {
+		h.sendError(w, http.StatusBadRequest, "INVALID_DJ_NAME", "DJ name is required")
+		return
+	}
+	if djNameLen > 100 {
+		h.sendError(w, http.StatusBadRequest, "INVALID_DJ_NAME", "DJ name must be at most 100 characters")
+		return
+	}
+
+	// Validate passcode (4 digits)
+	if !passcodePattern.MatchString(req.Passcode) {
+		h.sendError(w, http.StatusBadRequest, "INVALID_PASSCODE", "Passcode must be exactly 4 digits")
 		return
 	}
 
@@ -130,6 +152,11 @@ func (h *Handler) CreateReservation(w http.ResponseWriter, r *http.Request) {
 
 	if req.StartTime.Before(time.Now()) {
 		h.sendError(w, http.StatusBadRequest, "PAST_TIME", "Cannot create reservation in the past")
+		return
+	}
+
+	if !req.EndTime.After(req.StartTime) {
+		h.sendError(w, http.StatusBadRequest, "INVALID_TIME_RANGE", "End time must be after start time")
 		return
 	}
 
@@ -153,7 +180,18 @@ func (h *Handler) CreateReservation(w http.ResponseWriter, r *http.Request) {
 	reservation, err := h.db.CreateReservation(req.DjName, req.StartTime, req.EndTime, req.Passcode)
 	if err != nil {
 		h.logger.Errorf("Failed to create reservation: %v", err)
-		h.sendError(w, http.StatusBadRequest, "TIME_CONFLICT", "Time slot is already reserved")
+		errStr := err.Error()
+		if strings.Contains(errStr, "no_overlap") {
+			h.sendError(w, http.StatusConflict, "TIME_CONFLICT", "Time slot is already reserved")
+		} else if strings.Contains(errStr, "valid_time_range") {
+			h.sendError(w, http.StatusBadRequest, "INVALID_TIME_RANGE", "End time must be after start time")
+		} else if strings.Contains(errStr, "max_duration") {
+			h.sendError(w, http.StatusBadRequest, "DURATION_TOO_LONG", "Reservation duration cannot exceed 1 hour")
+		} else if strings.Contains(errStr, "time_interval") {
+			h.sendError(w, http.StatusBadRequest, "INVALID_TIME_INTERVAL", "Times must be on 15-minute intervals")
+		} else {
+			h.sendError(w, http.StatusInternalServerError, "DB_ERROR", "Failed to create reservation")
+		}
 		return
 	}
 
@@ -265,6 +303,12 @@ func (h *Handler) GetAvailableSlots(w http.ResponseWriter, r *http.Request) {
 	// Apply event end time cutoff if configured
 	if h.config.EventEndTime != nil && endTime.After(*h.config.EventEndTime) {
 		endTime = *h.config.EventEndTime
+	}
+
+	// Re-validate after clamping (request range entirely outside event bounds)
+	if !endTime.After(startTime) {
+		h.sendError(w, http.StatusBadRequest, "OUTSIDE_EVENT_BOUNDS", "Requested time range is outside the event period")
+		return
 	}
 
 	slots, err := h.db.GetAvailableSlotsInRange(startTime, endTime)

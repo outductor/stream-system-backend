@@ -17,7 +17,20 @@ type Client struct {
 	Conn     *websocket.Conn
 	Manager  *Manager
 	Send     chan []byte
-	LastPing time.Time
+	lastPing time.Time
+	mu       sync.Mutex
+}
+
+func (c *Client) SetLastPing(t time.Time) {
+	c.mu.Lock()
+	c.lastPing = t
+	c.mu.Unlock()
+}
+
+func (c *Client) GetLastPing() time.Time {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.lastPing
 }
 
 type Manager struct {
@@ -117,10 +130,13 @@ func (m *Manager) pingClients() {
 	for _, client := range clients {
 		select {
 		case client.Send <- pingMessage:
-			client.LastPing = time.Now()
+			client.SetLastPing(time.Now())
 		default:
 			// Client is not responsive, disconnect
-			m.unregister <- client
+			// Use goroutine to avoid deadlock since we're on the same goroutine as Run()
+			go func(c *Client) {
+				m.unregister <- c
+			}(client)
 		}
 	}
 }
@@ -131,7 +147,7 @@ func NewClient(conn *websocket.Conn, manager *Manager) *Client {
 		Conn:     conn,
 		Manager:  manager,
 		Send:     make(chan []byte, 256),
-		LastPing: time.Now(),
+		lastPing: time.Now(),
 	}
 }
 
@@ -163,7 +179,7 @@ func (c *Client) ReadPump() {
 
 		// Handle pong messages
 		if string(message) == `{"type":"pong"}` {
-			c.LastPing = time.Now()
+			c.SetLastPing(time.Now())
 		}
 	}
 }

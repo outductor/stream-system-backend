@@ -83,7 +83,21 @@ export const buildTimeSlot = (plainData: TimeSlotResponse): TimeSlot => {
 };
 
 export interface ApiError {
-  code: 'TIME_CONFLICT' | 'PAST_TIME' | 'INVALID_TIME_INTERVAL' | 'DURATION_TOO_LONG' | 'INVALID_PASSCODE' | 'BEFORE_EVENT_START' | 'EXCEEDS_EVENT_END';
+  code:
+    | 'TIME_CONFLICT'
+    | 'PAST_TIME'
+    | 'INVALID_TIME_INTERVAL'
+    | 'DURATION_TOO_LONG'
+    | 'INVALID_PASSCODE'
+    | 'INVALID_TIME_RANGE'
+    | 'RANGE_TOO_LARGE'
+    | 'EXCEEDS_EVENT_END'
+    | 'BEFORE_EVENT_START'
+    | 'INVALID_DJ_NAME'
+    | 'OUTSIDE_EVENT_BOUNDS'
+    | 'INVALID_REQUEST'
+    | 'NOT_FOUND'
+    | 'DB_ERROR';
   message: string;
 }
 

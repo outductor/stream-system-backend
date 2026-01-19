@@ -17,7 +17,7 @@ DSR配信システム - ライブストリーミングとタイムテーブル�
 - **フロントエンド**: React 19 + TypeScript + Vite
 - **バックエンド**: Go 1.24 + Echo Framework
 - **ストリーミング**: MediaMTX (RTMP → HLS変換)
-- **データベース**: PostgreSQL 17
+- **データベース**: PostgreSQL 18
 - **リバースプロキシ**: Nginx
 - **API**: OpenAPI 3.0によるスキーマファースト開発
 - **コンテナ化**: Docker + Docker Compose
@@ -29,7 +29,7 @@ DSR配信システム - ライブストリーミングとタイムテーブル�
 - Docker & Docker Compose（推奨）
 - Node.js 20以上（フロントエンド開発）
 - Go 1.24以上（バックエンド開発）
-- PostgreSQL 17（ローカル開発時）
+- PostgreSQL 18（ローカル開発時）
 
 ### Docker Composeを使用した開発環境起動
 

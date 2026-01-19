@@ -273,6 +273,11 @@ components:
             - RANGE_TOO_LARGE
             - EXCEEDS_EVENT_END
             - BEFORE_EVENT_START
+            - INVALID_DJ_NAME
+            - OUTSIDE_EVENT_BOUNDS
+            - INVALID_REQUEST
+            - NOT_FOUND
+            - DB_ERROR
         message:
           type: string
 

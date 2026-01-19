@@ -37,7 +37,10 @@ export function TimeSlotGrid({ date, reservations, onSlotClick }: TimeSlotGridPr
 
   const findReservationForSlot =
     (slot: TimeSlot): Reservation | undefined =>
-      reservations.find(r => r.startTime.equals(slot.startTime));
+      reservations.find(r =>
+        Temporal.Instant.compare(slot.startTime, r.startTime) >= 0 &&
+        Temporal.Instant.compare(slot.startTime, r.endTime) < 0
+      );
 
   const generateTimeSlots = () => {
     const slots: React.ReactElement[] = [];
@@ -53,7 +56,7 @@ export function TimeSlotGrid({ date, reservations, onSlotClick }: TimeSlotGridPr
         
         const slot = availableSlots.find(s => s.startTime.equals(slotInstant));
         const reservation = slot ? findReservationForSlot(slot) : undefined;
-        const isPast = Temporal.Instant.compare(slotInstant.add({ minutes: 15 }), now) < 0;
+        const isPast = Temporal.Instant.compare(slotInstant, now) <= 0;
         const isAvailable = slot?.available && !isPast;
 
         hourSlots.push(

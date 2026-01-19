@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func (db *DB) GetReservations() ([]Reservation, error) {
@@ -27,12 +28,17 @@ func (db *DB) GetReservations() ([]Reservation, error) {
 }
 
 func (db *DB) CreateReservation(djName string, startTime, endTime time.Time, passcode string) (*Reservation, error) {
+	hashedPasscode, err := bcrypt.GenerateFromPassword([]byte(passcode), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, fmt.Errorf("failed to hash passcode: %w", err)
+	}
+
 	reservation := Reservation{
 		ID:        uuid.New(),
 		DJName:    djName,
 		StartTime: startTime,
 		EndTime:   endTime,
-		Passcode:  passcode,
+		Passcode:  string(hashedPasscode),
 		CreatedAt: time.Now(),
 	}
 
@@ -41,9 +47,9 @@ func (db *DB) CreateReservation(djName string, startTime, endTime time.Time, pas
 		VALUES (:id, :dj_name, :start_time, :end_time, :passcode, :created_at)
 	`
 
-	_, err := db.NamedExec(query, reservation)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create reservation: %w", err)
+	_, execErr := db.NamedExec(query, reservation)
+	if execErr != nil {
+		return nil, fmt.Errorf("failed to create reservation: %w", execErr)
 	}
 
 	return &reservation, nil
@@ -59,7 +65,7 @@ func (db *DB) DeleteReservation(id uuid.UUID, passcode string) error {
 		return fmt.Errorf("failed to get reservation: %w", err)
 	}
 
-	if storedPasscode != passcode {
+	if err := bcrypt.CompareHashAndPassword([]byte(storedPasscode), []byte(passcode)); err != nil {
 		return fmt.Errorf("invalid passcode")
 	}
 
@@ -190,7 +196,7 @@ func (db *DB) GetReservationsInRange(startTime, endTime time.Time) ([]Reservatio
 		ORDER BY start_time
 	`
 
-	err := db.Select(&reservations, query, startTime.In(time.UTC), endTime.In(time.UTC))
+	err := db.Select(&reservations, query, startTime, endTime)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get reservations in range: %w", err)
 	}
