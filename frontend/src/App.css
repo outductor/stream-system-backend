@@ -440,6 +440,11 @@
   border-color: #ff9800;
 }
 
+.legend-item.current::before {
+  background-color: #56889a;
+  border-color: #79aebe;
+}
+
 .legend-item.past::before {
   background-color: #666;
   border-color: #666;
@@ -494,8 +499,45 @@
 }
 
 .time-slot.reserved {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   color: #fff;
   background-color: #ff9800;
+}
+
+.time-slot.reserved.reservation-continuation {
+  margin-left: -0.5rem;
+  border-left-color: transparent;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.time-slot.reserved.reservation-continuation:first-child {
+  margin-left: 0;
+}
+
+.time-slot.reserved.reservation-continues {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.time-slot.reserved.current {
+  background-color: #56889a;
+  border-color: #79aebe;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16);
+}
+
+.time-slot.reserved.current.current-position::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  top: 0;
+  bottom: 0;
+  left: var(--current-position);
+  width: 3px;
+  background-color: rgba(38, 38, 38, 0.55);
+  transform: translateX(-1px);
 }
 
 .time-slot.reserved > .slot-dj {
@@ -692,6 +734,10 @@
 
   .time-slot {
     min-width: auto;
+  }
+
+  .time-slot.reserved.reservation-mobile-row-start {
+    margin-left: 0;
   }
 
   /* モバイル版での予約コンテンツ */

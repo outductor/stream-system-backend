@@ -66,8 +66,8 @@ DB_USER=postgres          # データベースユーザー
 DB_PASSWORD=postgres      # データベースパスワード
 SERVER_PORT=8080          # APIサーバーポート
 LOG_LEVEL=debug           # ログレベル
-EVENT_START_TIME=2025-08-29 00:00:00  # イベント開始時刻
-EVENT_END_TIME=2025-08-31 23:59:59    # イベント終了時刻
+EVENT_START_TIME=2026-08-28 00:00:00  # イベント開始時刻
+EVENT_END_TIME=2026-08-30 23:59:59    # イベント終了時刻
 EVENT_TIMEZONE=Asia/Tokyo             # タイムゾーン
 
 # フロントエンド（ビルド時）

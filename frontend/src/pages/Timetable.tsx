@@ -18,10 +18,46 @@ export function Timetable() {
   const [reservationFormDefaultInstant, setReservationFormDefaultInstant] = useState<Temporal.Instant | null>(null);
   const [deleteReservation, setDeleteReservation] = useState<Reservation | null>(null);
   const [eventConfig, setEventConfig] = useState<EventConfig | null>(null);
+  const [eventConfigLoading, setEventConfigLoading] = useState(true);
+  const [eventConfigError, setEventConfigError] = useState<Error | null>(null);
+  const [now, setNow] = useState(() => Temporal.Now.instant());
   const { reservations, loading, error } = useReservations(selectedDate);
 
   useEffect(() => {
-    configApi.getEventConfig().then(setEventConfig).catch(console.error);
+    const timer = window.setInterval(() => {
+      setNow(Temporal.Now.instant());
+    }, 30_000);
+
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    configApi.getEventConfig()
+      .then((config) => {
+        if (!cancelled) {
+          setEventConfig(config);
+        }
+      })
+      .catch((configError: unknown) => {
+        if (!cancelled) {
+          setEventConfigError(
+            configError instanceof Error
+              ? configError
+              : new Error('イベント設定の取得に失敗しました')
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setEventConfigLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const formatDateTimeWithCrossDay = (reservation: Reservation, currentDate: Temporal.PlainDate) => {
@@ -103,7 +139,7 @@ export function Timetable() {
     );
   };
 
-  if (loading) {
+  if (loading || eventConfigLoading) {
     return (
       <div className="timetable">
         <div className="loading">読み込み中...</div>
@@ -111,26 +147,35 @@ export function Timetable() {
     );
   }
 
-  if (error) {
+  const pageError = error ?? eventConfigError;
+
+  if (pageError) {
     return (
       <div className="timetable">
-        <div className="error">エラーが発生しました: {error.message}</div>
+        <div className="error">エラーが発生しました: {pageError.message}</div>
       </div>
     );
   }
 
-  const groupedReservations = groupReservationsByDate(reservations);
+  if (!eventConfig?.eventStartTime || !eventConfig.eventEndTime) {
+    return (
+      <div className="timetable">
+        <div className="error">イベント設定を読み込めませんでした</div>
+      </div>
+    );
+  }
+
+  const { eventStartTime, eventEndTime } = eventConfig;
+
+  const cancellableReservations = reservations.filter(
+    reservation => Temporal.Instant.compare(reservation.endTime, now) > 0
+  );
+  const groupedReservations = groupReservationsByDate(cancellableReservations);
 
   // イベント期間から日付リストを生成
   const generateEventDays = (): Temporal.PlainDate[] => {
-    if (!eventConfig?.eventStartTime || !eventConfig?.eventEndTime) {
-      // フォールバック: 今日から3日間
-      const today = Temporal.Now.zonedDateTimeISO(timezone).toPlainDate();
-      return [today, today.add({ days: 1 }), today.add({ days: 2 })];
-    }
-
-    const startDate = eventConfig.eventStartTime.toZonedDateTimeISO(timezone).toPlainDate();
-    const endDate = eventConfig.eventEndTime.toZonedDateTimeISO(timezone).toPlainDate();
+    const startDate = eventStartTime.toZonedDateTimeISO(timezone).toPlainDate();
+    const endDate = eventEndTime.toZonedDateTimeISO(timezone).toPlainDate();
     
     const days: Temporal.PlainDate[] = [];
     let currentDate = startDate;
@@ -168,7 +213,7 @@ export function Timetable() {
   return (
     <div className="timetable">
       <div className="timetable-header">
-        <h1>DSR2025 DJブース タイムテーブル</h1>
+        <h1>DSR2026 DJブース タイムテーブル</h1>
         <CurrentTime />
       </div>
       
@@ -212,7 +257,7 @@ export function Timetable() {
         if (filteredReservations.length === 0) {
           return (
             <div className="no-reservations">
-              <p>選択された日付に予約がありません</p>
+              <p>選択された日付に取消可能な予約はありません</p>
             </div>
           );
         }
@@ -255,6 +300,7 @@ export function Timetable() {
             <h3>{formatDateHeader(date)}</h3>
             <TimeSlotGrid
               date={date}
+              now={now}
               reservations={reservations.filter(r => {
                 const startDate = r.startTime.toZonedDateTimeISO(timezone).toPlainDate();
                 // Start of this date as Instant for exclusive end comparison

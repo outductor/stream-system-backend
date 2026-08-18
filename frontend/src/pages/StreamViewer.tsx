@@ -55,7 +55,7 @@ export function StreamViewer() {
 
   return (
     <div className="stream-viewer">
-      <h1>DSR2025 DJブース ライブ配信</h1>
+      <h1>DSR2026 DJブース ライブ配信</h1>
       
       <div className="stream-info">
         <div className={`live-indicator ${status.isLive ? 'live' : 'offline'}`}>

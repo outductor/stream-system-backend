@@ -98,7 +98,7 @@ DB_PASSWORD=your-secure-password
 LOG_LEVEL=info
 
 # イベント終了時刻
-EVENT_END_TIME=2025-08-31 23:59:59
+EVENT_END_TIME=2026-08-30 23:59:59
 EVENT_TIMEZONE=Asia/Tokyo
 ```
 
