@@ -1,37 +1,48 @@
 # DJ Event Streaming System Frontend
 
-DJイベント配信システムのフロントエンドアプリケーション。ライブストリーミング視聴とタイムテーブル表示機能を提供します。
+DJイベント配信システムのフロントエンドアプリケーションです。
+ライブストリーミング視聴とタイムテーブル表示機能を提供します。
 
 ## 機能
 
 - **ライブ配信視聴**: HLS形式でのストリーミング視聴
 - **配信状態表示**: 現在のDJと次のDJの情報をリアルタイム表示
-- **タイムテーブル**: 今日と明日の予約一覧表示
+- **タイムテーブル**: 設定されたイベント期間の予約作成、取消、空き枠表示
+- **進行状況表示**: 進行中セッションと現在位置のハイライト
 - **レスポンシブデザイン**: モバイル・タブレット・デスクトップ対応
 
 ## 技術スタック
 
-- React 18 + TypeScript
-- Vite
-- React Router
+- React 19
+- TypeScript
+- Vite 7
+- React Router 7
 - HLS.js
 - Axios
-- date-fns
+- Temporal Polyfill
 
 ## セットアップ
 
-1. 依存関係のインストール
+Node.js 20.19以上または22.12以上を使用します。
+
+1. 依存関係をインストールします。
+
 ```bash
-npm install
+npm ci
 ```
 
-2. 環境変数の設定
+2. 必要に応じて`.env.local`を作成します。
+
 ```bash
-cp .env.example .env
-# 必要に応じて.envファイルを編集
+# frontend/.env.local
+VITE_API_BASE_URL=http://localhost/api/v1
+VITE_HLS_ENDPOINT=http://localhost/hls/stream-endpoint/index.m3u8
 ```
 
-3. 開発サーバーの起動
+この設定は、リポジトリ直下のCompose環境をAPIとHLSの接続先として使います。
+
+3. 開発サーバーを起動します。
+
 ```bash
 npm run dev
 ```
@@ -40,53 +51,34 @@ npm run dev
 
 ```bash
 npm run build
+npm run lint
 ```
 
 ## 環境変数
 
-- `VITE_API_BASE_URL`: バックエンドAPIのベースURL（デフォルト: http://localhost:18080/api/v1）
+- `VITE_API_BASE_URL`: バックエンドAPIの基底URL（未指定時は`http://localhost:18080/api/v1`）
+- `VITE_HLS_ENDPOINT`: HLSプレイリストURL（未指定時は`http://localhost:8888/hls/stream`）
 
 ## ページ構成
 
 - `/`: ライブ配信視聴ページ
 - `/timetable`: タイムテーブルページ
 
-## Dockerを使用したデプロイ
+## Composeを使用した実行
 
-### ビルド
+リポジトリ直下で全サービスを起動します。
 
 ```bash
-make build
-# または
-docker build -t dj-event-frontend .
+cp .env.example .env
+docker compose up -d --build
 ```
 
-### 実行（バックエンドと連携）
+フロントエンドは`http://localhost/`、タイムテーブルは`http://localhost/timetable`で開けます。
+
+停止するときもリポジトリ直下で実行します。
 
 ```bash
-make run
-# または
-docker-compose up -d
-```
-
-### 実行（スタンドアロン）
-
-```bash
-make run-standalone
-# または
-docker-compose -f docker-compose.standalone.yml up -d
-```
-
-### アクセス
-
-- フロントエンド: http://localhost:3000
-
-### 停止
-
-```bash
-make stop
-# または
-docker-compose down
+docker compose down
 ```
 
 ## Nginx設定
@@ -94,5 +86,4 @@ docker-compose down
 - React Routerに対応したSPA設定
 - Gzip圧縮
 - 静的アセットのキャッシュ設定
-- バックエンドAPIへのプロキシ設定
-- HLSストリームへのプロキシ設定
+- APIとHLSのプロキシは、リポジトリ直下のNginxが処理

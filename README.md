@@ -15,7 +15,7 @@ DSR配信システム - ライブストリーミングとタイムテーブル�
 ## アーキテクチャ
 
 - **フロントエンド**: React 19 + TypeScript + Vite
-- **バックエンド**: Go 1.24 + Echo Framework
+- **バックエンド**: Go + Chi v5
 - **ストリーミング**: MediaMTX (RTMP → HLS変換)
 - **データベース**: PostgreSQL 18
 - **リバースプロキシ**: Nginx
@@ -26,20 +26,23 @@ DSR配信システム - ライブストリーミングとタイムテーブル�
 
 ### 必要なソフトウェア
 
-- Docker & Docker Compose（推奨）
-- Node.js 20以上（フロントエンド開発）
-- Go 1.24以上（バックエンド開発）
-- PostgreSQL 18（ローカル開発時）
+- Docker EngineとDocker Compose
+- Node.js 20.19以上または22.12以上（フロントエンドを個別に開発する場合）
+- Go 1.25.5以上（バックエンドを個別に開発する場合）
+- PostgreSQL 18（データベースを個別に起動する場合）
 
 ### Docker Composeを使用した開発環境起動
 
 ```bash
 # リポジトリのクローン
-git clone <repository-url>
+git clone https://github.com/outductor/stream-system-backend.git
 cd stream-system-backend
 
+# 環境変数の作成と編集
+cp .env.example .env
+
 # 開発環境の起動
-docker compose up -d
+docker compose up -d --build
 
 # ログの確認
 docker compose logs -f
@@ -55,25 +58,19 @@ docker compose logs -f
 
 ## 環境変数
 
-開発時に設定可能な環境変数：
+Compose環境では、リポジトリ直下の`.env`に次の値を設定します。
+日時は`EVENT_TIMEZONE`のローカル時刻として解釈されます。
 
 ```bash
-# バックエンド
-DB_HOST=localhost          # データベースホスト
-DB_PORT=5432              # データベースポート
-DB_NAME=stream_system     # データベース名
-DB_USER=postgres          # データベースユーザー
-DB_PASSWORD=postgres      # データベースパスワード
-SERVER_PORT=8080          # APIサーバーポート
-LOG_LEVEL=debug           # ログレベル
-EVENT_START_TIME=2026-08-28 00:00:00  # イベント開始時刻
-EVENT_END_TIME=2026-08-30 23:59:59    # イベント終了時刻
-EVENT_TIMEZONE=Asia/Tokyo             # タイムゾーン
-
-# フロントエンド（ビルド時）
-VITE_API_BASE_URL=http://localhost/api/v1     # API基底URL
-VITE_HLS_ENDPOINT=http://localhost/hls/stream-endpoint/index.m3u8  # HLS配信URL
+PRODUCTION_DOMAIN=http://localhost
+DB_PASSWORD=change-this-password
+EVENT_START_TIME=2026-08-28 00:00:00
+EVENT_END_TIME=2026-08-30 23:59:59
+EVENT_TIMEZONE=Asia/Tokyo
 ```
+
+`VITE_API_BASE_URL`と`VITE_HLS_ENDPOINT`はComposeビルド時に`PRODUCTION_DOMAIN`から生成されます。
+バックエンドを個別に起動する場合は、`DB_HOST`、`DB_PORT`、`DB_NAME`、`DB_USER`、`DB_PASSWORD`、`DB_SSLMODE`、`SERVER_HOST`、`SERVER_PORT`、`LOG_LEVEL`も設定できます。
 
 ## ローカル開発
 
@@ -98,14 +95,6 @@ make generate-api
 make run
 ```
 
-### 必要なソフトウェア
-
-- Docker & Docker Compose（推奨）
-- または個別実行の場合：
-  - Node.js 18以上（フロントエンド）
-  - Go 1.24以上（バックエンド）
-  - PostgreSQL 17（データベース）
-
 ## API仕様
 
 APIの詳細仕様は `api/openapi.yaml` を参照してください。
@@ -115,8 +104,10 @@ APIの詳細仕様は `api/openapi.yaml` を参照してください。
 - `GET /api/v1/stream/status` - 配信状態とスケジュール情報
 - `GET /api/v1/reservations` - 予約一覧の取得
 - `POST /api/v1/reservations` - 新規予約の作成
-- `DELETE /api/v1/reservations/{id}` - 予約の削除（パスコード認証）
+- `DELETE /api/v1/reservations/{reservationId}` - 予約の削除（パスコード認証）
 - `GET /api/v1/available-slots` - 指定時間範囲内の利用可能時間枠
+- `GET /api/v1/event-config` - イベント期間とタイムゾーンの取得
+- `GET /api/v1/ws/viewer` - 視聴者数更新用WebSocket
 
 
 ## テスト動作確認
@@ -133,18 +124,18 @@ curl http://localhost/api/v1/stream/status | jq .
 # 予約一覧取得
 curl http://localhost/api/v1/reservations | jq .
 
-# 予約作成（絵文字対応）
+# 予約作成（イベント期間内の未来時刻へ置き換えてください）
 curl -X POST http://localhost/api/v1/reservations \
   -H "Content-Type: application/json" \
   -d '{
     "djName": "DJ テスト 🎵",
-    "startTime": "'$(date -u -d "+1 hour" +%Y-%m-%dT%H:00:00Z)'",
-    "endTime": "'$(date -u -d "+2 hours" +%Y-%m-%dT%H:00:00Z)'",
+    "startTime": "2026-08-28T10:00:00+09:00",
+    "endTime": "2026-08-28T11:00:00+09:00",
     "passcode": "1234"
   }' | jq .
 
 # 利用可能時間枠確認（72時間以内）
-curl "http://localhost/api/v1/available-slots?startTime=$(date -u +%Y-%m-%dT%H:%M:%SZ)&endTime=$(date -u -d "+24 hours" +%Y-%m-%dT%H:%M:%SZ)" | jq .
+curl "http://localhost/api/v1/available-slots?startTime=2026-08-28T00:00:00%2B09:00&endTime=2026-08-29T00:00:00%2B09:00" | jq .
 
 # 予約削除
 curl -X DELETE http://localhost/api/v1/reservations/{reservation-id} \
@@ -156,16 +147,10 @@ curl -X DELETE http://localhost/api/v1/reservations/{reservation-id} \
 
 ```bash
 # ユニットテスト（バックエンド）
-cd backend
-go test ./...
+(cd backend && go test ./...)
 
-# フロントエンドのテスト
-cd frontend
-npm test
-
-# E2Eテスト（Docker Compose環境が必要）
-docker compose up -d
-./scripts/e2e-test.sh  # テストスクリプトがある場合
+# フロントエンドの型チェック、ビルド、Lint
+(cd frontend && npm run build && npm run lint)
 ```
 
 ## プロジェクト構造
@@ -192,7 +177,7 @@ stream-system-backend/
 │   └── package.json
 ├── mediamtx/             # ストリーミングサーバー設定
 ├── nginx/                # リバースプロキシ設定
-├── compose.yml           # Docker Compose設定
+├── compose.yaml          # Docker Compose設定
 └── media/               # 生成されるメディアファイル
 ```
 
@@ -240,13 +225,13 @@ npm run lint
 - **HTTP（Nginx）**: 80
 - **RTMP（MediaMTX）**: 19350  
 
-ポートが使用中の場合、`compose.yml`の`ports`セクションを編集してください。
+ポートが使用中の場合、`compose.yaml`の`ports`セクションを編集してください。
 
 ### コンテナ起動失敗
 
 ```bash
-# 既存コンテナとボリュームの削除
-docker compose down -v
+# 既存コンテナの停止
+docker compose down
 
 # イメージの再ビルド
 docker compose build --no-cache
@@ -255,28 +240,24 @@ docker compose build --no-cache
 docker compose up -d
 ```
 
-## CI/CD
+データベースを含む永続データも破棄する場合に限り、`docker compose down -v`を使用してください。
+
+## CI
 
 ### GitHub Actions
 
-`.github/workflows/` に以下のワークフローが定義されています：
+`.github/workflows/`には次のワークフローが定義されています。
 
-- `pr-build-check.yaml`: プルリクエスト時のビルドチェック
-- `docker-publish.yaml`: Dockerイメージのビルドとプッシュ
+- `pr-build-check.yaml`: プルリクエスト時のコード生成同期、Lint、型チェック、Compose統合テスト
 
 ### コード品質
 
 ```bash
 # バックエンドのリント
-cd backend
-golangci-lint run
+(cd backend && golangci-lint run)
 
-# フロントエンドのリント
-cd frontend
-npm run lint
-
-# TypeScriptの型チェック
-npm run type-check
+# フロントエンドのLint、型チェック、プロダクションビルド
+(cd frontend && npm run lint && npm run build)
 ```
 
 ## コントリビューティング

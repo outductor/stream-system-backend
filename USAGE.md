@@ -1,13 +1,14 @@
-# 本番環境 使用ガイド - DJ Event Streaming System
+# DJ Event Streaming System 本番環境ガイド
 
 本番環境での起動方法と配信設定のガイドです。
 
 ## 必要なもの
 
-- Docker & Docker Compose
+- Docker EngineとDocker Compose
 - OBS Studio（配信用）
 - 80番ポートと19350番ポートが利用可能であること
-- 本番用ドメイン名（推奨）
+- 本番用ドメイン名
+- HTTPSを使う場合はTLSを終端するロードバランサーまたはリバースプロキシ
 
 ## 本番環境のセットアップ
 
@@ -22,7 +23,8 @@ cd stream-system-backend
 cp .env.example .env
 ```
 
-`.env` ファイルを編集して本番用の値を設定：
+`.env`ファイルを編集して本番用の値を設定します。
+イベント日時は`EVENT_TIMEZONE`のローカル時刻として解釈されます。
 
 ```bash
 # 必須設定
@@ -41,9 +43,12 @@ EVENT_TIMEZONE=Asia/Tokyo
 # 起動
 docker compose up -d --build
 
-# たまにnginxが502になるときは
-docker compose restart nginx -d
+# frontendを再作成した後に502になる場合
+docker compose restart nginx
 ```
+
+このCompose構成のNginxは80番ポートでHTTPを受け付けます。
+`PRODUCTION_DOMAIN`にHTTPSのURLを指定する場合は、外部でTLSを終端して80番ポートへ転送してください。
 
 ### 3. 動作確認
 
@@ -61,14 +66,17 @@ curl http://your-domain.com/api/v1/stream/status
 
 1. OBS Studioを起動
 2. **設定** → **配信** を開く
-3. 以下の設定を入力（環境に合わせて適宜変えてください）：
+3. 以下の設定を入力します。
 
    - **サービス**: カスタム
    - **サーバー**: `rtmp://your-domain.com:19350/`
    - **ストリームキー**: `stream-endpoint?user=mediamtx-streaming-usr&pass=mediamtx-streaming-passwd`
 
-4. **OK** をクリックして設定を保存
-5. **配信開始** ボタンで配信を開始
+4. **OK**をクリックして設定を保存
+5. **配信開始**ボタンで配信を開始
+
+`mediamtx/mediamtx.yml`には配信用のサンプル認証情報が入っています。
+公開前にユーザー名とパスワードを変更し、OBSのストリームキーにも同じ値を設定してください。
 
 ### 配信の確認
 
