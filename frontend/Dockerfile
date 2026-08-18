@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # Build stage
-FROM node:22-alpine AS builder
+FROM node:24.18.0-alpine3.24 AS builder
 
 WORKDIR /app
 
@@ -22,7 +22,7 @@ RUN --mount=type=cache,target=/root/.npm \
     npm run build
 
 # Production stage
-FROM nginx:alpine
+FROM nginx:1.31.3-alpine3.24
 
 # Copy built assets from builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html

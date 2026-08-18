@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM golang:1.25-alpine AS builder
+FROM golang:1.26.5-alpine3.24 AS builder
 
 WORKDIR /app
 
@@ -10,14 +10,15 @@ RUN --mount=type=cache,target=/go/pkg/mod/ \
     --mount=type=bind,source=go.sum,target=go.sum \
     go mod download -x
 
-# Build the application with bind mount and cache
+COPY . .
+
+# Build the application with cache
 RUN --mount=type=cache,target=/go/pkg/mod/ \
     --mount=type=cache,target=/root/.cache/go-build/ \
-    --mount=type=bind,target=. \
     go build -ldflags="-s -w" -o /bin/stream-server ./cmd/server
 
 # Production stage
-FROM alpine:latest
+FROM alpine:3.24.1
 
 RUN apk add --no-cache ffmpeg ca-certificates tzdata
 

@@ -134,10 +134,6 @@ authJWTClaimKey: mediamtx_permissions
 # Actions to exclude from JWT-based authentication.
 # Format is the same as the one of user permissions.
 authJWTExclude: []
-# allow passing the JWT through query parameters of HTTP requests (i.e. ?jwt=JWT).
-# This is a security risk.
-authJWTInHTTPQuery: true
-
 ###############################################
 # Global settings -> Control API
 
@@ -154,8 +150,9 @@ apiEncryption: no
 apiServerKey: server.key
 # Path to the server certificate.
 apiServerCert: server.crt
-# Value of the Access-Control-Allow-Origin header provided in every HTTP response.
-apiAllowOrigin: '*'
+# List of allowed CORS origins.
+# Supports wildcards: ['http://*.example.com']
+apiAllowOrigins: ['*']
 # List of IPs or CIDRs of proxies placed before the HTTP server.
 # If the server receives a request from one of these entries, IP in logs
 # will be taken from the X-Forwarded-For header.
@@ -177,8 +174,9 @@ metricsEncryption: no
 metricsServerKey: server.key
 # Path to the server certificate.
 metricsServerCert: server.crt
-# Value of the Access-Control-Allow-Origin header provided in every HTTP response.
-metricsAllowOrigin: '*'
+# List of allowed CORS origins.
+# Supports wildcards: ['http://*.example.com']
+metricsAllowOrigins: ['*']
 # List of IPs or CIDRs of proxies placed before the HTTP server.
 # If the server receives a request from one of these entries, IP in logs
 # will be taken from the X-Forwarded-For header.
@@ -200,8 +198,9 @@ pprofEncryption: no
 pprofServerKey: server.key
 # Path to the server certificate.
 pprofServerCert: server.crt
-# Value of the Access-Control-Allow-Origin header provided in every HTTP response.
-pprofAllowOrigin: '*'
+# List of allowed CORS origins.
+# Supports wildcards: ['http://*.example.com']
+pprofAllowOrigins: ['*']
 # List of IPs or CIDRs of proxies placed before the HTTP server.
 # If the server receives a request from one of these entries, IP in logs
 # will be taken from the X-Forwarded-For header.
@@ -223,8 +222,9 @@ playbackEncryption: no
 playbackServerKey: server.key
 # Path to the server certificate.
 playbackServerCert: server.crt
-# Value of the Access-Control-Allow-Origin header provided in every HTTP response.
-playbackAllowOrigin: '*'
+# List of allowed CORS origins.
+# Supports wildcards: ['http://*.example.com']
+playbackAllowOrigins: ['*']
 # List of IPs or CIDRs of proxies placed before the HTTP server.
 # If the server receives a request from one of these entries, IP in logs
 # will be taken from the X-Forwarded-For header.
@@ -319,9 +319,9 @@ hlsEncryption: no
 hlsServerKey: server.key
 # Path to the server certificate.
 hlsServerCert: server.crt
-# Value of the Access-Control-Allow-Origin header provided in every HTTP response.
-# This allows to play the HLS stream from an external website.
-hlsAllowOrigin: '*'
+# List of allowed CORS origins.
+# Supports wildcards: ['http://*.example.com']
+hlsAllowOrigins: ['*']
 # List of IPs or CIDRs of proxies placed before the HLS server.
 # If the server receives a request from one of these entries, IP in logs
 # will be taken from the X-Forwarded-For header.
@@ -377,9 +377,9 @@ webrtcEncryption: no
 webrtcServerKey: server.key
 # Path to the server certificate.
 webrtcServerCert: server.crt
-# Value of the Access-Control-Allow-Origin header provided in every HTTP response.
-# This allows to play the WebRTC stream from an external website.
-webrtcAllowOrigin: '*'
+# List of allowed CORS origins.
+# Supports wildcards: ['http://*.example.com']
+webrtcAllowOrigins: ['*']
 # List of IPs or CIDRs of proxies placed before the WebRTC server.
 # If the server receives a request from one of these entries, IP in logs
 # will be taken from the X-Forwarded-For header.
@@ -696,9 +696,8 @@ pathDefaults:
   # Environment variables are the same of runOnDemand.
   runOnUnDemand:
 
-  # Command to run when the stream is ready to be read, whenever it is
-  # published by a client or pulled from a server / camera.
-  # This is terminated with SIGINT when the stream is not ready anymore.
+  # Command to run when the stream is available to be read.
+  # This is terminated with SIGINT when the stream is not available anymore.
   # The following environment variables are available:
   # * MTX_PATH: path name
   # * MTX_QUERY: query parameters (passed by publisher)
@@ -707,12 +706,12 @@ pathDefaults:
   # * RTSP_PORT: RTSP server port
   # * G1, G2, ...: regular expression groups, if path name is
   #   a regular expression.
-  runOnReady:
+  runOnAvailable:
   # Restart the command if it exits.
-  runOnReadyRestart: no
+  runOnAvailableRestart: no
   # Command to run when the stream is not available anymore.
-  # Environment variables are the same of runOnReady.
-  runOnNotReady:
+  # Environment variables are the same of runOnAvailable.
+  runOnUnavailable:
 
   # Command to run when a client starts reading.
   # This is terminated with SIGINT when a client stops reading.
